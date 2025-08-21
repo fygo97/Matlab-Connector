@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "PolyphenyConnection",
+      "request": "launch",
+      "mainClass": "PolyphenyConnection",
+      "projectName": "Learning Contract_7fe425cb",
+      "vmArgs": "-Djava.library.path=C:\\Programme\\MATLAB\\R2025a\\bin\\win64"
+    }
+  ]
+}

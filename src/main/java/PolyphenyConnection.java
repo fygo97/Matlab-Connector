@@ -118,9 +118,9 @@ public class PolyphenyConnection {
 
     /*
     @Description
-    Opens the server connection to Polypheny if needed (reuse otherwise). Checking the if-clause in java is a lot faster, than iterative
-    opening and closing of the connection after every use for large numbers of queries, as it eliminates the ~10ms matlab-java crossover
-    that opening and closing a connection from matlab would create. For 1M queries that avoids 1M * 10ms = ~10 000 sec = 2.8 hrs of overhead.
+    - Opens the server connection to Polypheny if needed (reuse otherwise). Checking the if-clause in java is a lot faster, than iterative
+      opening and closing of the connection after every use for large numbers of queries, as it eliminates the ~10ms matlab-java crossover
+      that opening and closing a connection from matlab would create. For 1M queries that avoids 1M * 10ms = ~10 000 sec = 2.8 hrs of overhead.
 
     @param -
     @return -
@@ -138,7 +138,7 @@ public class PolyphenyConnection {
 
     /*
     @Description
-    Closes connection if open
+    - Closes connection if open
 
     @param -
     @return -
@@ -161,7 +161,7 @@ public class PolyphenyConnection {
 
     /*
     @Description
-    Getter function for the connection variable of PolyphenyConnection 
+    - Getter function for the connection variable of PolyphenyConnection 
     
     @param -
     @return Connection connection variable of the PolyphenyConnection class
@@ -172,7 +172,7 @@ public class PolyphenyConnection {
 
     /* 
     @Description
-    Setter function for the connection variable
+    - Setter function for the connection variable
 
     @param input_connection: The connection we want to set your PolyphenyConnection object to.
     @return -
@@ -183,7 +183,7 @@ public class PolyphenyConnection {
 
     /* 
     @Description
-    Getter function for the MatlabEngine of the PolyphenyConnection object
+    - Getter function for the MatlabEngine of the PolyphenyConnection object
 
     @param -
     @return MatlabEngine matlabEngine variable of the PolyphenyConnection class

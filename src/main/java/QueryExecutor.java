@@ -57,7 +57,7 @@ public class QueryExecutor{
 
     /*
     @Description
-    Casts the result of the queries to MatlabObjects, depending on the Databse language (SQL, MongoQL, Cypher)
+    - Casts the result of the queries to MatlabObjects, depending on the Databse language (SQL, MongoQL, Cypher)
 
     @param ResultSet rs: The result object of the query 
     @return engine.getVariable("T") which is either null/scalar/table (SQL), document (MongoQL) or TODO (Cypher)

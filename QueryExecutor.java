@@ -55,7 +55,13 @@ public class QueryExecutor{
         }
     }
 
-    // Executes multi-model queries (SQL, MongoQL, Cypher)
+    /*
+    @Description
+    Casts the result of the queries to MatlabObjects, depending on the Databse language (SQL, MongoQL, Cypher)
+
+    @param ResultSet rs: The result object of the query 
+    @return engine.getVariable("T") which is either null/scalar/table (SQL), document (MongoQL) or TODO (Cypher)
+    */
     public Object ResultToMatlab(ResultSet rs) throws Exception {
 
         MatlabEngine engine = polyconnection.get_MatlabEngine();
@@ -72,7 +78,7 @@ public class QueryExecutor{
         }
 
         // ─────────────────────────────
-        // Case 2: Scalar Result (1x1)
+        // Case 2: Scalar Result
         // ─────────────────────────────
         if (colCount == 1 && rs.isLast()) {
             Object scalar = rs.getObject(1);

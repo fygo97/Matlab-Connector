@@ -31,7 +31,14 @@ public class PolyphenyConnection {
     }
 
 
-    // Checks if Polypheny is running locally and starts it if not
+    /*  
+    @Description
+    - Checks if Polypheny is running locally and starts it if not
+
+    @param -
+    @return
+    - Boolean true or Exception: because Polypheny is either running in the end or was started.
+    */
     private boolean isPolyphenyRunning() throws Exception{
         try (Socket socket = new Socket("localhost", 20590)) {
             return true; // Able to connect -> running, Otherwise an Exception will be thrown later
@@ -40,10 +47,14 @@ public class PolyphenyConnection {
 
 
     /*
-    @REQUIREMENTS:
+    @REQUIREMENTS
     - polypheny.jar in lib folder
 
-    Starts the Polypheny application on the local machine
+    @Description
+    - Starts the Polypheny application on the local machine
+
+    @param -
+    @return -
      */
     public void StartLocalPolypheny() throws Exception{
             // If the connection isn't open locally start the Polypheny application locally.
@@ -90,9 +101,9 @@ public class PolyphenyConnection {
 
     /*
     @Description
-    Open the server connection to Polypheny if needed (reuse otherwise). Checking the if-clause in java is a lot faster for large numbers of 
-    queries as it eliminates the ~10ms matlab-java crossover that opening and closing a connection from matlab would create. For 1M queries
-    that avoids 1M * 10ms = ~10 000 sec = 2.8 hrs of overhead.
+    Opens the server connection to Polypheny if needed (reuse otherwise). Checking the if-clause in java is a lot faster, than iterative
+    opening and closing of the connection after every use for large numbers of queries, as it eliminates the ~10ms matlab-java crossover
+    that opening and closing a connection from matlab would create. For 1M queries that avoids 1M * 10ms = ~10 000 sec = 2.8 hrs of overhead.
 
     @param -
     @return -
@@ -133,21 +144,33 @@ public class PolyphenyConnection {
 
     /*
     @Description
-    Getter for the connection variable of PolyphenyConnection 
+    Getter function for the connection variable of PolyphenyConnection 
     
     @param -
-    @return Connection connection of the PolyphenyConnection class
+    @return Connection connection variable of the PolyphenyConnection class
     */
     public Connection get_connection() {
         return this.connection;
     }
 
-    // Setter function for the connection variable
+    /* 
+    @Description
+    Setter function for the connection variable
+
+    @param input_connection: The connection we want to set your PolyphenyConnection object to.
+    @return -
+     */
     public void set_connection(Connection input_connection){
         this.connection = input_connection;
     }
 
-    // Getter function for the connection variable
+    /* 
+    @Description
+    Getter function for the MatlabEngine of the PolyphenyConnection object
+
+    @param -
+    @return MatlabEngine matlabEngine variable of the PolyphenyConnection class
+    */
     public MatlabEngine get_MatlabEngine() {
         return this.matlabEngine;
     }

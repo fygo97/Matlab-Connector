@@ -5,9 +5,6 @@ out/
 build/
 
 # VS Code settings (keep launch.json)
-#.vscode/
-#!.vscode/launch.json
-#!.vscode/settings.json
 
 # OS-specific files
 .DS_Store

@@ -39,9 +39,12 @@ public class PolyphenyConnection {
     @return
     - Boolean true or Exception: because Polypheny is either running in the end or was started.
     */
-    private boolean isPolyphenyRunning() throws Exception{
+
+    private boolean isPolyphenyRunning() {
         try (Socket socket = new Socket("localhost", 20590)) {
             return true; // Able to connect -> running, Otherwise an Exception will be thrown later
+        } catch (Exception e) {
+            return false;
         }
     }
 
@@ -56,17 +59,31 @@ public class PolyphenyConnection {
     @param -
     @return -
      */
-    public void StartLocalPolypheny() throws Exception{
-            // If the connection isn't open locally start the Polypheny application locally.
+    public void StartLocalPolypheny() {
+        try {
             if (!isPolyphenyRunning()) {
+                System.out.println("Polypheny not running. Attempting to start...");
                 ProcessBuilder pb = new ProcessBuilder("java", "-jar", "lib/polypheny.jar");
-                pb.inheritIO(); // show output
+                pb.inheritIO();
                 pb.start();
-                Thread.sleep(4000); // wait for Polypheny to boot
-                } 
-            // If the connection is open do nothing
-            else {System.err.println("Polypheny already running on local system");
+
+                // Wait and retry a few times
+                int retries = 5;
+                int delay = 2000; // 2 seconds
+                while (retries-- > 0 && !isPolyphenyRunning()) {
+                    System.out.println("Waiting for Polypheny to start...");
+                    Thread.sleep(delay);
+                }
+
+                if (!isPolyphenyRunning()) {
+                    System.err.println("Polypheny did not start in time.");
+                }
+            } else {
+                System.out.println("Polypheny is already running.");
             }
+        } catch (Exception e) {
+            System.err.println("Could not start Polypheny: " + e.getMessage());
+        }
     }
 
 
@@ -176,24 +193,25 @@ public class PolyphenyConnection {
     }
 
 
+
+
+    public static void main(String[] args) {
+        try {
+            String url = "jdbc:polypheny://localhost/public";
+            String user = "pa";
+            String pass = "";
+
+            PolyphenyConnection conn = new PolyphenyConnection(url, user, pass);
+            QueryExecutor executor = new QueryExecutor(conn);
+            executor.execute("sql", "public", "SELECT * FROM emps;");
+
+            conn.get_MatlabEngine().eval("disp(head(T,5));");
+            conn.close();
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 }
 
-/*
-public static void main(String[] args) {
-    try {
-        String url = "jdbc:polypheny://localhost/public";
-        String user = "pa";
-        String pass = "";
 
-        PolyphenyConnection conn = new PolyphenyConnection(url, user, pass);
-        Object result = conn.execute("sql", "public", "SELECT * FROM emps;");
-
-        conn.matlab.eval("disp(head(T,5));");
-        conn.close();
-        
-    } catch (Exception e) {
-        e.printStackTrace();
-    }
 }
-}
- */

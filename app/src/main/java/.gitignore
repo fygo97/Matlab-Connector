@@ -11,10 +11,4 @@ build/
 Thumbs.db
 
 # Ignore lib folder except .jar files
-libs/*
-
-# Ignore Gradle project-specific cache directory
-.gradle
-
-# Ignore Gradle build output directory
-build
+lib/*

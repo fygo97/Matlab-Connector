@@ -1,0 +1,42 @@
+plugins {
+    id 'application'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation files('libs/engine.jar','libs/jmi.jar','libs/polypheny-jdbc-driver-2.3.jar')
+    // pick up every jar in ../libs
+    implementation fileTree(dir: "${rootProject.projectDir}/libs", include: ["*.jar"])
+}
+
+application {
+    mainClass = 'Main' // or whatever your main class is
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+tasks.named("run", JavaExec).configure { workingDir = rootProject.projectDir }
+
+def matlabCandidates = [
+    "C:/Programme/MATLAB/R2025a/bin/win64",    // German install path
+    "C:/Program Files/MATLAB/R2025a/bin/win64" // English install path
+].findAll { file(it).exists() }
+
+tasks.named("run", JavaExec).configure {
+    doFirst {
+        def newPath = System.getenv("PATH")
+        matlabCandidates.each { newPath += ";" + it }
+        environment "PATH", newPath
+        if (!matlabCandidates.isEmpty()) {
+            jvmArgs "-Djava.library.path=" + matlabCandidates.join(";")
+        }
+        println "MATLAB native dirs: " + (matlabCandidates.isEmpty() ? "<none found>" : matlabCandidates)
+    }
+}

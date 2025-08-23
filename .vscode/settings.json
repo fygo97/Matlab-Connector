@@ -1,14 +1,4 @@
 {
-  "java.project.sourcePaths": ["src/main/java"],
-  "java.project.referencedLibraries": [
-    "lib/engine.jar",
-    "lib/polypheny-jdbc-driver-2.3.jar",
-    "lib/polypheny.jar"
-  ],
-  "cSpell.words": [
-    "emps",
-    "mongoql",
-    "polyconnection",
-    "Polypheny"
-  ]
+  "java.project.sourcePaths": ["app/src/main/java"],
+  "java.project.referencedLibraries": []
 }

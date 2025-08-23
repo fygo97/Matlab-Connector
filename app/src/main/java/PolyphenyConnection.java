@@ -1,4 +1,5 @@
 import java.sql.*;
+import java.io.IOException;
 import java.net.Socket;
 import com.mathworks.engine.MatlabEngine;
 
@@ -27,6 +28,7 @@ public class PolyphenyConnection {
         this.matlabEngine = null; //The Matlab engine is needed for the typecasting in ExecuteQuery later, but started here to avoid overhead
 
         StartLocalPolypheny();    //Starts Polypheny locally on the machine if it's not already running
+        waitForPolyphenyReady();
         StartMatlabEngine();      //Starts MatlabEngine to handle the query results. Every connection will each create their own MatlabEngine
     }
 
@@ -48,6 +50,29 @@ public class PolyphenyConnection {
         }
     }
 
+    private void waitForPolyphenyReady() {
+        int timeoutTime = 30;
+        int timeWaited = 0;
+
+        while (timeWaited < timeoutTime) {
+            try (Socket socket = new Socket("127.0.0.1", 20590)) {
+                System.out.println("Polypheny is ready.");
+                return;
+            } catch (IOException e) {
+                System.out.println(" Waiting for Polypheny to become ready...");
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted while waiting for Polypheny.");
+                }
+                timeWaited++;
+            }
+        }
+
+        throw new RuntimeException("Polypheny did not start within timeout.");
+    }
+
 
     /*
     @REQUIREMENTS
@@ -62,22 +87,18 @@ public class PolyphenyConnection {
     public void StartLocalPolypheny() {
         try {
             if (!isPolyphenyRunning()) {
-                System.out.println("Polypheny not running. Attempting to start...");
-                ProcessBuilder pb = new ProcessBuilder("java", "-jar", "lib/polypheny.jar");
+                System.out.println("Polypheny not running. Attempting to start Polypheny application");
+                ProcessBuilder pb = new ProcessBuilder("java", "-jar", "libs/polypheny.jar");
                 pb.inheritIO();
                 pb.start();
 
-                // Wait and retry a few times
-                int retries = 5;
-                int delay = 2000; // 2 seconds
-                while (retries-- > 0 && !isPolyphenyRunning()) {
-                    System.out.println("Waiting for Polypheny to start...");
-                    Thread.sleep(delay);
+                // Wait until JDBC is ready
+                while (!isJdbcAvailable("jdbc:polypheny://localhost:20590", "pa", "")) {
+                    System.out.println("Waiting for JDBC to become available...");
+                    Thread.sleep(1000);
                 }
 
-                if (!isPolyphenyRunning()) {
-                    System.err.println("Polypheny did not start in time.");
-                }
+                System.out.println("Polypheny JDBC is ready.");
             } else {
                 System.out.println("Polypheny is already running.");
             }
@@ -85,6 +106,15 @@ public class PolyphenyConnection {
             System.err.println("Could not start Polypheny: " + e.getMessage());
         }
     }
+
+    private boolean isJdbcAvailable(String jdbcUrl, String user, String pass) {
+        try (java.sql.Connection conn = java.sql.DriverManager.getConnection(jdbcUrl, user, pass)) {
+            return conn != null && !conn.isClosed();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
 
 
     /*
@@ -191,27 +221,5 @@ public class PolyphenyConnection {
     public MatlabEngine get_MatlabEngine() {
         return this.matlabEngine;
     }
-
-
-
-
-    public static void main(String[] args) {
-        try {
-            String url = "jdbc:polypheny://localhost/public";
-            String user = "pa";
-            String pass = "";
-
-            PolyphenyConnection conn = new PolyphenyConnection(url, user, pass);
-            QueryExecutor executor = new QueryExecutor(conn);
-            executor.execute("sql", "public", "SELECT * FROM emps;");
-
-            conn.get_MatlabEngine().eval("disp(head(T,5));");
-            conn.close();
-            
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-}
-
 
 }

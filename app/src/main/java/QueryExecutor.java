@@ -89,13 +89,14 @@ public class QueryExecutor{
         // ─────────────────────────────
         // Case 3: Tabular Result (≥1 column, ≥1 row)
         // ─────────────────────────────
-        String[] columnNames = new String[colCount];
+        String[] colNames = new String[colCount];
+        
         for (int i = 1; i <= colCount; i++) {
-            columnNames[i - 1] = meta.getColumnName(i);
+            colNames[i - 1] = meta.getColumnName(i);
         }
-
+        
         engine.eval("T = table();");
-        engine.putVariable("colNames", columnNames);
+        engine.putVariable("colNames", colNames);
         engine.eval("T.Properties.VariableNames = colNames;");
 
         // First row already fetched above with rs.next()
@@ -105,6 +106,12 @@ public class QueryExecutor{
                 rowData[i - 1] = rs.getObject(i);
             }
             engine.putVariable("rowData", rowData);
+
+            if (colNames.length != rowData.length) {
+                throw new RuntimeException("Mismatch: colNames and rowData column count don't match");
+            }
+
+
             engine.eval("T = [T; cell2table(rowData, 'VariableNames', colNames)];");
         } while (rs.next());
 

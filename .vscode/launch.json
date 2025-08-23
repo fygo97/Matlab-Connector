@@ -3,11 +3,22 @@
   "configurations": [
     {
       "type": "java",
+      "name": "Main",
+      "request": "launch",
+      "mainClass": "Main",
+      "projectName": "Learning Contract_7fe425cb"
+    },
+    {
+      "type": "java",
       "name": "PolyphenyConnection",
       "request": "launch",
       "mainClass": "PolyphenyConnection",
       "projectName": "Learning Contract_7fe425cb",
-      "vmArgs": "-Djava.library.path=C:\\Programme\\MATLAB\\R2025a\\bin\\win64"
+      "vmArgs": "-Djava.library.path=C:\\Programme\\MATLAB\\R2025a\\bin\\win64",
+      "env": {
+        "PATH": "C:\\Programme\\MATLAB\\R2025a\\bin\\win64;C:\\Programme\\MATLAB\\R2025a\\extern\\bin\\win64;${env:PATH}"
+      },
+      "console": "internalConsole"
     }
   ]
 }

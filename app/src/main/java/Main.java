@@ -7,9 +7,7 @@ public class Main {
 
             PolyphenyConnection conn = new PolyphenyConnection(url, user, pass);
             QueryExecutor executor = new QueryExecutor(conn);
-            executor.execute("sql", "public", "SELECT * FROM emps;");
-
-            conn.get_MatlabEngine().eval("disp(head(T,5));");
+            executor.execute("sql", "SELECT * FROM emps;");
             conn.close();
         } catch (Exception e) {
             e.printStackTrace();

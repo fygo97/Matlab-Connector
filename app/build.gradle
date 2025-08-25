@@ -13,7 +13,7 @@ dependencies {
 }
 
 application {
-    mainClass = 'Main' // or whatever your main class is
+    mainClass = 'QuickTest' // or whatever your main class is
 }
 
 java {

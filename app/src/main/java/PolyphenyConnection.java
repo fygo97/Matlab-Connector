@@ -1,11 +1,9 @@
 import java.sql.*;
 import java.io.IOException;
 import java.net.Socket;
-import com.mathworks.engine.MatlabEngine;
 
 public class PolyphenyConnection {
     private Connection connection;
-    private MatlabEngine matlabEngine; 
     private final String url, username, password;
 
     /*
@@ -25,11 +23,8 @@ public class PolyphenyConnection {
         this.username = username; 
         this.password = password; 
         this.connection = null;   //The connection is established later on when needed. Lazy open prevents accidental resource leaks induced by user
-        this.matlabEngine = null; //The Matlab engine is needed for the typecasting in ExecuteQuery later, but started here to avoid overhead
-
         StartLocalPolypheny();    //Starts Polypheny locally on the machine if it's not already running
         waitForPolyphenyReady();
-        StartMatlabEngine();      //Starts MatlabEngine to handle the query results. Every connection will each create their own MatlabEngine
     }
 
 
@@ -115,37 +110,6 @@ public class PolyphenyConnection {
         }
     }
 
-
-
-    /*
-    @Description
-    - Starts the matlabEngine of the PolyphenyConnection class
-
-    @param -
-    @return -
-     */
-    public void StartMatlabEngine() throws Exception {
-        if (matlabEngine == null) {
-            matlabEngine = MatlabEngine.startMatlab();
-            System.out.println("Shared MATLAB engine started.");
-        }
-    }
-
-    /*
-    @Description
-    - Stops the matlabEngine of the PolyphenyConnection class
-
-    @param -
-    @return -
-     */
-    public void StopMatlabEngine() throws Exception {
-        if (matlabEngine != null) {
-            matlabEngine.close();
-            matlabEngine = null;
-            System.out.println("Shared MATLAB engine stopped.");
-        }
-    }
-
     /*
     @Description
     - Opens the server connection to Polypheny if needed (reuse otherwise). Checking the if-clause in java is a lot faster, than iterative
@@ -181,12 +145,6 @@ public class PolyphenyConnection {
         } catch (SQLException e) {
             System.err.println("Failed to close connection: " + e.getMessage());
         }
-
-        try {
-            if (matlabEngine!=null) matlabEngine.close();
-        } catch(Exception e){
-            System.err.println("Failed to close MATLAB: " + e.getMessage());
-        }
     }
 
     /*
@@ -211,15 +169,5 @@ public class PolyphenyConnection {
         this.connection = input_connection;
     }
 
-    /* 
-    @Description
-    - Getter function for the MatlabEngine of the PolyphenyConnection object
-
-    @param -
-    @return MatlabEngine matlabEngine variable of the PolyphenyConnection class
-    */
-    public MatlabEngine get_MatlabEngine() {
-        return this.matlabEngine;
-    }
 
 }

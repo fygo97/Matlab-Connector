@@ -1,4 +1,11 @@
 {
   "java.project.sourcePaths": ["app/src/main/java"],
-  "java.project.referencedLibraries": []
+  "java.project.referencedLibraries": [],
+  "cSpell.words": [
+    "emps",
+    "JDBC",
+    "mongoql",
+    "polyconnection",
+    "Polypheny"
+  ]
 }

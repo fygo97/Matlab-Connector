@@ -1,5 +1,6 @@
 import java.sql.*;
-import com.mathworks.engine.MatlabEngine;
+import java.util.ArrayList;
+import java.util.List;
 
 public class QueryExecutor{
     private PolyphenyConnection polyconnection;
@@ -29,7 +30,7 @@ public class QueryExecutor{
     @return
     - ResultToMatlab(rs) which is a Matlab compatible object that is cast to the Matlab user.
     */
-    public Object execute(String language, String namespace, String query) {
+    public Object execute(String language, String query) {
 
         polyconnection.openIfNeeded();
         switch (language.toLowerCase()) {
@@ -57,64 +58,63 @@ public class QueryExecutor{
 
     /*
     @Description
-    - Casts the result of the queries to MatlabObjects, depending on the Databse language (SQL, MongoQL, Cypher)
+    - Casts the result of the queries to MatlabObjects, depending on the Database language (SQL, MongoQL, Cypher)
 
     @param ResultSet rs: The result object of the query 
-    @return engine.getVariable("T") which is either null/scalar/table (SQL), document (MongoQL) or TODO (Cypher)
+    @return engine.getVariable("MatlabTable") which is either null/scalar/table (SQL), document (MongoQL) or TODO (Cypher)
     */
     public Object ResultToMatlab(ResultSet rs) throws Exception {
 
-        MatlabEngine engine = polyconnection.get_MatlabEngine();
         ResultSetMetaData meta = rs.getMetaData();
         int colCount = meta.getColumnCount();
+        Object Result;
+        Object[][] ResultArray;
 
         // ─────────────────────────────
         // Case 1: Empty Result
         // ─────────────────────────────
         if (!rs.next()) {
             System.out.println("Empty result set.");
-            engine.eval("T = table();");
-            return engine.getVariable("T");
+            Result = null;
+            return Result;
         }
 
         // ─────────────────────────────
         // Case 2: Scalar Result
         // ─────────────────────────────
         if (colCount == 1 && rs.isLast()) {
+            System.out.println("Scalar result set.");
             Object scalar = rs.getObject(1);
-            engine.putVariable("scalarResult", scalar);
-            return engine.getVariable("scalarResult");
+            return scalar;
         }
 
         // ─────────────────────────────
         // Case 3: Tabular Result (≥1 column, ≥1 row)
         // ─────────────────────────────
-        String[] colNames = new String[colCount];
+        String[] colNames = new String[colCount]; //get the column names to name the columns later
         
         for (int i = 1; i <= colCount; i++) {
-            colNames[i - 1] = meta.getColumnName(i);
+            colNames[i - 1] = meta.getColumnName(i); //assign the column names to the array
         }
-        
-        engine.eval("T = table();");
-        engine.putVariable("colNames", colNames);
-        engine.eval("T.Properties.VariableNames = colNames;");
 
-        // First row already fetched above with rs.next()
+ 
+        List<Object[]> rows = new ArrayList<>(); // List of arrays to store the rows returned by the query
         do {
-            Object[] rowData = new Object[colCount];
-            for (int i = 1; i <= colCount; i++) {
-                rowData[i - 1] = rs.getObject(i);
+            Object[] row = new Object[colCount]; // Creates new array that will store the queries entries
+            for (int i=0; i<colCount; i++) {
+                row[i] = rs.getObject(i+1);      // Saves each entry
             }
-            engine.putVariable("rowData", rowData);
+            rows.add(row);                       // Append row to the List
+        } while (rs.next()); // First row already fetched above with rs.next() so we use do while
 
-            if (colNames.length != rowData.length) {
-                throw new RuntimeException("Mismatch: colNames and rowData column count don't match");
-            }
+        // Ensure that the colNames and rows have the same number of columns
+        if (colNames.length != rows.get(0).length) {
+            throw new RuntimeException("Mismatch: colNames and rowData column count don't match");
+        }
 
+        ResultArray  = rows.toArray(new Object[rows.size()][]);
 
-            engine.eval("T = [T; cell2table(rowData, 'VariableNames', colNames)];");
-        } while (rs.next());
-
-        return engine.getVariable("T");
+        return new Object[] {colNames, ResultArray};
+    }
 }
-}
+

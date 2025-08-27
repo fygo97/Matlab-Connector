@@ -11,11 +11,9 @@ public class QueryExecutor {
      * @Description
      * - Constructor
      * 
-     * @param
-     * - polyconnection: PolyphenyConnection object that holds the connection
+     * @param polyconnection: PolyphenyConnection object that holds the connection
      * details to the Database. It's used to execute queries
-     * @return
-     * - Object of the query (SQL: empty, scalar or table; MongoQL: TODO;
+     * @return: Object of the query (SQL: empty, scalar or table; MongoQL: TODO;
      * Cypher: TODO)
      **/
     public QueryExecutor( PolyphenyConnection polyconnection ) {
@@ -27,13 +25,11 @@ public class QueryExecutor {
      * @Description
      * - Executes the query depending on the language given by the user
      * 
-     * @param
-     * - language: The database language that is used (e.g. SQL, MongoQL,
+     * @param language: The database language that is used (e.g. SQL, MongoQL,
      * Cypher)
-     * - namespace: Name of the database namespace (e.g. emps, students)
-     * - query: The query-text to be executed (e.g. FROM emps SELECT *)
-     * @return
-     * - ResultToMatlab(rs) which is a Matlab compatible object that is cast
+     * @param query: The query-text to be executed (e.g. FROM emps SELECT *)
+     * 
+     * @return: ResultToMatlab(rs) which is a Matlab compatible object that is cast
      * to the Matlab user.
      **/
     public Object execute( String language, String query ) {
@@ -66,9 +62,10 @@ public class QueryExecutor {
      * - Casts the result of the queries to MatlabObjects, depending on
      * the Database language (SQL, MongoQL, Cypher)
      * 
-     * @param ResultSet rs: The result object of the query
-     * @return engine.getVariable("MatlabTable") which is either null/scalar/table
-     * (SQL), document (MongoQL) or TODO (Cypher)
+     * @param rs: The result object of the query of type ResultSet
+     * 
+     * @return: Result from the query which is either null/scalar/table (SQL), document (MongoQL)
+     * or TODO (Cypher)
      **/
     public Object ResultToMatlab( ResultSet rs ) throws Exception {
 

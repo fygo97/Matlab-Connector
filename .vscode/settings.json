@@ -1,5 +1,7 @@
 {
-  "java.project.sourcePaths": ["app/src/main/java"],
+  "java.project.sourcePaths": [
+    "app/src/main/java"
+  ],
   "java.project.referencedLibraries": [],
   "cSpell.words": [
     "emps",
@@ -7,5 +9,12 @@
     "mongoql",
     "polyconnection",
     "Polypheny"
-  ]
+  ],
+  "java.format.enabled": true,
+  "java.format.settings.url": ".vscode/Polypheny-Style.xml",
+  "java.format.settings.profile": "Polypheny Code Style",
+  "[java]": {
+    "editor.defaultFormatter": "redhat.java",
+    "editor.formatOnSave": true
+  }
 }

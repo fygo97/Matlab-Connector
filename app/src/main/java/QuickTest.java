@@ -2,8 +2,7 @@ import java.util.Arrays;
 
 public class QuickTest {
     public static void main(String[] args) throws Exception {
-        PolyphenyConnection conn =
-            new PolyphenyConnection("jdbc:polypheny://localhost:20590", "pa", "");
+        PolyphenyConnection conn = new PolyphenyConnection("jdbc:polypheny://localhost:20590", "pa", "");
         try {
             QueryExecutor exec = new QueryExecutor(conn);
 
@@ -32,7 +31,7 @@ public class QuickTest {
 
     static void printTable(Object r) {
         if (r instanceof Object[]) {
-            Object[] t = (Object[]) r;                // { colNames, data }
+            Object[] t = (Object[]) r; // { colNames, data }
             String[] cols = (String[]) t[0];
             Object[][] data = (Object[][]) t[1];
             System.out.println("Cols: " + Arrays.toString(cols));

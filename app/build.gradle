@@ -1,42 +1,26 @@
 plugins {
-    id 'application'
+  id 'application'
+  id 'com.github.johnrengelman.shadow' version '8.1.1' //necessary plugin to create the .jar file for matlab later
 }
 
-repositories {
-    mavenCentral()
-}
+application { mainClass = 'QuickTest' } // currently running QuickTest.java as application
+
+repositories { mavenCentral() }
 
 dependencies {
-    implementation files('libs/engine.jar','libs/jmi.jar','libs/polypheny-jdbc-driver-2.3.jar')
-    // pick up every jar in ../libs
-    implementation fileTree(dir: "${rootProject.projectDir}/libs", include: ["*.jar"])
+  // Pull all JARs from the **root** libs/ folder (
+  implementation fileTree(dir: "${rootProject.projectDir}/libs", include: ["*.jar"])
+
+  // Silences SLF4J warnings
+  implementation 'org.slf4j:slf4j-simple:2.0.16'
 }
 
-application {
-    mainClass = 'QuickTest' // or whatever your main class is
+shadowJar {
+  archiveBaseName.set('polypheny')
+  archiveClassifier.set('all')
+  archiveVersion.set('')   // => app/build/libs/polypheny-all.jar
 }
 
 java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-    }
-}
-
-tasks.named("run", JavaExec).configure { workingDir = rootProject.projectDir }
-
-def matlabCandidates = [
-    "C:/Programme/MATLAB/R2025a/bin/win64",    // German install path
-    "C:/Program Files/MATLAB/R2025a/bin/win64" // English install path
-].findAll { file(it).exists() }
-
-tasks.named("run", JavaExec).configure {
-    doFirst {
-        def newPath = System.getenv("PATH")
-        matlabCandidates.each { newPath += ";" + it }
-        environment "PATH", newPath
-        if (!matlabCandidates.isEmpty()) {
-            jvmArgs "-Djava.library.path=" + matlabCandidates.join(";")
-        }
-        println "MATLAB native dirs: " + (matlabCandidates.isEmpty() ? "<none found>" : matlabCandidates)
-    }
+  toolchain { languageVersion = JavaLanguageVersion.of(17) }
 }

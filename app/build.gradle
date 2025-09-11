@@ -8,19 +8,20 @@ application { mainClass = 'QuickTest' } // currently running QuickTest.java as a
 repositories { mavenCentral() }
 
 dependencies {
-  // Pull all JARs from the **root** libs/ folder (
-  implementation fileTree(dir: "${rootProject.projectDir}/libs", include: ["*.jar"])
-
-  // Silences SLF4J warnings
+  // SLF4J implementation to silence warnings (bundled into the shaded JAR)
   implementation 'org.slf4j:slf4j-simple:2.0.16'
+
+  // JDBC driver: keep separate in toolbox/libs/, not bundled into the shaded JAR
+  compileOnly files(rootProject.file('libs/polypheny-jdbc-driver-2.3.jar'))
+  runtimeOnly  files(rootProject.file('libs/polypheny-jdbc-driver-2.3.jar'))
 }
 
 shadowJar {
-  archiveBaseName.set('polypheny')
-  archiveClassifier.set('all')
-  archiveVersion.set('')   // => app/build/libs/polypheny-all.jar
+  archiveBaseName.set('polypheny')     // final jar name base
+  archiveClassifier.set('all')         // adds -all suffix
+  archiveVersion.set('')               // => app/build/libs/polypheny-all.jar
 }
 
 java {
-  toolchain { languageVersion = JavaLanguageVersion.of(17) }
+  toolchain { languageVersion = JavaLanguageVersion.of(8) }
 }

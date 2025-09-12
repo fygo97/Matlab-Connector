@@ -43,7 +43,7 @@ public class QueryExecutor {
                 return null;
 
             case "sql":
-                try ( Statement stmt = polyconnection.get_connection().createStatement(); ResultSet rs = stmt.executeQuery( query ) ) {
+                try ( Statement stmt = polyconnection.getConnection().createStatement(); ResultSet rs = stmt.executeQuery( query ) ) {
                     return ResultToMatlab( rs );
                 } catch ( Exception e ) {
                     System.err.println( "SQL execution failed: " + e.getMessage() );

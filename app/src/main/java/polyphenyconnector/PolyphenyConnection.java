@@ -18,11 +18,7 @@ public class PolyphenyConnection {
      * @param username: username to access the database with
      * @param password: password to the corresponding username
      * 
-     * @return
-     * - Creates a PolyphenyConnection object that can be passed to the ExecuteQuery class and used to
-     * run queries
      **/
-
     public PolyphenyConnection( String host, int port, String username, String password ) {
         this.host = host;
         this.port = port;
@@ -46,7 +42,8 @@ public class PolyphenyConnection {
     public void openIfNeeded() {
         if ( connection == null ) {
             try {
-                connection = DriverManager.getConnection( url, username, password );     // runs startLocalPolypheny if connection isn't responsive
+                connection = DriverManager.getConnection( url, username, password );  // runs startLocalPolypheny if connection isn't responsive
+                connection.setAutoCommit( true );  // make sure standard mode autocommits                       
             } catch ( SQLException e ) {
                 throw new RuntimeException( "Failed to open connection", e );
             }
@@ -97,7 +94,7 @@ public class PolyphenyConnection {
      * @return
      * - Connection connection variable of the PolyphenyConnection class
      **/
-    public Connection get_connection() {
+    public Connection getConnection() {
         return this.connection;
     }
 
@@ -108,7 +105,7 @@ public class PolyphenyConnection {
      * 
      * @param input_connection: The connection we want to set your PolyphenyConnection object to.
      **/
-    public void set_connection( Connection input_connection ) {
+    public void setConnection( Connection input_connection ) {
         this.connection = input_connection;
     }
 

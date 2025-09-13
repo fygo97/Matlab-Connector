@@ -17,11 +17,16 @@ public class QueryExecutorTest {
         myconnection = new PolyphenyConnection( "localhost", 20590, "pa", "" );
         myexecutor = new QueryExecutor( myconnection );
 
-        // Delete any TABLE called <unittest_table> and any NAMESPACE <unittest_namespace>. This is important so we can insert it
+        // Delete any TABLE called <unittest_table> and any NAMESPACE <unittest_namespace> if it exists. This is important so we can insert it
         // cleanly, in case tests break mid run the cleanup "@Afterall" might not have been executed properly.
-        myexecutor.execute( "sql", "DROP TABLE IF EXISTS unittest_namespace.unittest_table" );
-        myexecutor.execute( "sql", "DROP NAMESPACE IF EXISTS unittest_namespace" );
-
+        try {
+            myexecutor.execute( "sql", "DROP TABLE unittest_namespace.unittest_table" );
+        } catch ( Exception ignored ) {
+        }
+        try {
+            myexecutor.execute( "sql", "DROP NAMESPACE unittest_namespace" );
+        } catch ( Exception ignored ) {
+        }
         // Creates the NAMESPACE <unittest_namespace> and TABLE <unittest_table>.
         myexecutor.execute( "sql", "CREATE NAMESPACE unittest_namespace" );
         myexecutor.execute( "sql", "CREATE TABLE unittest_namespace.unittest_table (id INT NOT NULL, name VARCHAR(100), PRIMARY KEY(id))" );
@@ -150,7 +155,7 @@ public class QueryExecutorTest {
         myexecutor.execute( "sql", "DELETE FROM unittest_namespace.unittest_table" );
 
         // Test that the query comes back null.
-        Object result = myexecutor.execute( "sql", "SELECT * FROM unittest_namespace.unittest_table WHERE name == 'Bob'" );
+        Object result = myexecutor.execute( "sql", "SELECT * FROM unittest_namespace.unittest_table WHERE name = 'Bob'" );
         assertNull( result, "After DELETE the table should be empty" );
     }
 

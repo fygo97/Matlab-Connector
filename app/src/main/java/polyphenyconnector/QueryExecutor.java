@@ -43,11 +43,19 @@ public class QueryExecutor {
                 return null;
 
             case "sql":
-                try ( Statement stmt = polyconnection.getConnection().createStatement(); ResultSet rs = stmt.executeQuery( query ) ) {
-                    return ResultToMatlab( rs );
+                try ( Statement stmt = polyconnection.getConnection().createStatement() ) {
+                    String first = query.trim().toUpperCase();
+
+                    if ( first.startsWith( "SELECT" ) ) {
+                        try ( ResultSet rs = stmt.executeQuery( query ) ) {
+                            return ResultToMatlab( rs );
+                        }
+                    } else {
+                        stmt.executeUpdate( query );  // INSERT, UPDATE, DELETE, CREATE, DROP, ...
+                        return null;
+                    }
                 } catch ( Exception e ) {
-                    System.err.println( "SQL execution failed: " + e.getMessage() );
-                    return null;
+                    throw new RuntimeException( "SQL execution failed: " + e.getMessage(), e );
                 }
 
             case "mongoql":

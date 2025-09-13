@@ -4,14 +4,18 @@
   ],
   "java.project.referencedLibraries": [],
   "cSpell.words": [
+    "Afterall",
     "empid",
     "emps",
     "JDBC",
     "johnrengelman",
     "mongoql",
+    "myexecutor",
     "polyconnection",
     "Polypheny",
-    "polyphenyconnector"
+    "polyphenyconnector",
+    "wrongpass",
+    "wronguser"
   ],
   "java.format.enabled": true,
   "java.format.settings.url": ".vscode/Polypheny-Style.xml",

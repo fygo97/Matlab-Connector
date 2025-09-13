@@ -43,7 +43,7 @@ public class PolyphenyConnection {
         if ( connection == null ) {
             try {
                 connection = DriverManager.getConnection( url, username, password );  // runs startLocalPolypheny if connection isn't responsive
-                connection.setAutoCommit( true );  // make sure standard mode autocommits                       
+                connection.setAutoCommit( true );  // make sure standard mode defaults to AutoCommit                       
             } catch ( SQLException e ) {
                 throw new RuntimeException( "Failed to open connection", e );
             }
@@ -83,6 +83,8 @@ public class PolyphenyConnection {
             }
         } catch ( SQLException e ) {
             System.err.println( "Failed to close connection: " + e.getMessage() );
+        } finally {
+            connection = null;
         }
     }
 
@@ -96,17 +98,6 @@ public class PolyphenyConnection {
      **/
     public Connection getConnection() {
         return this.connection;
-    }
-
-
-    /**
-     * @Description
-     * - Setter function for the connection variable
-     * 
-     * @param input_connection: The connection we want to set your PolyphenyConnection object to.
-     **/
-    public void setConnection( Connection input_connection ) {
-        this.connection = input_connection;
     }
 
 

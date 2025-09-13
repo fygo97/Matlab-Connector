@@ -6,7 +6,7 @@ import polyphenyconnector.QueryExecutor;
 public class QuickTest {
 
     public static void main( String[] args ) throws Exception {
-        PolyphenyConnection conn = new PolyphenyConnection( "jdbc:polypheny://localhost:20590", "pa", "" );
+        PolyphenyConnection conn = new PolyphenyConnection( "localhost", 20590, "pa", "" );
         try {
             QueryExecutor exec = new QueryExecutor( conn );
 

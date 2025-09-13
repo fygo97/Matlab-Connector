@@ -66,8 +66,8 @@ public class QueryExecutor {
      * 
      * @param rs: The result object of the query of type ResultSet
      * 
-     * @return: Result from the query which is either null/scalar/table (SQL), document (MongoQL)
-     * or TODO (Cypher)
+     * @return: Result from the query which is either null/scalar/table (SQL), TODO document (MongoQL)
+     * or (Cypher)
      **/
     public Object ResultToMatlab( ResultSet rs ) throws Exception {
 
@@ -110,8 +110,10 @@ public class QueryExecutor {
                 row[i] = rs.getObject( i + 1 ); // Saves each entry
             }
             rows.add( row ); // Append row to the List
+            System.err.println( "Fetched row: " + java.util.Arrays.toString( row ) );
         } while ( rs.next() ); // First row already fetched above with rs.next() so we use do while
 
+        System.err.println( "Rows: " + java.util.Arrays.deepToString( rows.toArray() ) );
         // Ensure that the colNames and rows have the same number of columns
         if ( colNames.length != rows.get( 0 ).length ) {
             throw new RuntimeException( "Mismatch: colNames and rowData column count don't match" );

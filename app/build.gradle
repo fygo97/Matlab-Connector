@@ -14,6 +14,9 @@ dependencies {
   // JDBC driver: keep separate in toolbox/libs/, not bundled into the shaded JAR
   compileOnly files(rootProject.file('libs/polypheny-jdbc-driver-2.3.jar'))
   runtimeOnly  files(rootProject.file('libs/polypheny-jdbc-driver-2.3.jar'))
+    
+  // JUnit 5
+  testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
 }
 
 shadowJar {
@@ -25,3 +28,12 @@ shadowJar {
 java {
   toolchain { languageVersion = JavaLanguageVersion.of(8) }
 }
+
+test {
+    useJUnitPlatform()
+    testLogging {
+      events "passed", "skipped", "failed"
+    }
+    outputs.upToDateWhen { false }
+}
+

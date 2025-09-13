@@ -6,8 +6,7 @@ public class Main {
     public static void main( String[] args ) {
         try {
             String host = "localhost";
-            int port = "public";
-            String url = "jdbc:polypheny://localhost/public";
+            int port = 205090;
             String user = "pa";
             String pass = "";
 

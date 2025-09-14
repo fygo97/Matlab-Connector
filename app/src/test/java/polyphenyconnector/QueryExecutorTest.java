@@ -146,6 +146,33 @@ public class QueryExecutorTest {
 
 
     @Test
+    void testQueryWithSpaces() {
+        // Insert Bob into table.
+        // Insert id = 1,2 and name = Alice, Bob into the table.
+        myexecutor.execute( "sql", "  INSERT INTO unittest_namespace.unittest_table VALUES (1, 'Alice')" );
+        myexecutor.execute( "sql", " INSERT INTO unittest_namespace.unittest_table VALUES (2, 'Bob')" );
+
+        // Query the result from the table.
+        Object result = myexecutor.execute( "sql", "SELECT id, name FROM unittest_namespace.unittest_table ORDER BY id" );
+
+        // Check the contents of the query are correct.
+        Object[] arr = (Object[]) result;
+        String[] colNames = (String[]) arr[0];
+        Object[][] data = (Object[][]) arr[1];
+
+        // Test the column names match.
+        assertArrayEquals( new String[]{ "id", "name" }, colNames );
+
+        // Test the array has indeed length 2 (2 rows for Alice and Bob)
+        assertEquals( 2, data.length );
+
+        // Test the contents of each row are correct.
+        assertArrayEquals( new Object[]{ 1, "Alice" }, data[0] );
+        assertArrayEquals( new Object[]{ 2, "Bob" }, data[1] );
+    }
+
+
+    @Test
     void testDeleteFromTable() {
 
         // Insert Bob into table.

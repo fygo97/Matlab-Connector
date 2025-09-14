@@ -118,10 +118,10 @@ public class QueryExecutor {
                 row[i] = rs.getObject( i + 1 ); // Saves each entry
             }
             rows.add( row ); // Append row to the List
-            System.err.println( "Fetched row: " + java.util.Arrays.toString( row ) );
+            // System.err.println( "Fetched row: " + java.util.Arrays.toString( row ) );
         } while ( rs.next() ); // First row already fetched above with rs.next() so we use do while
 
-        System.err.println( "Rows: " + java.util.Arrays.deepToString( rows.toArray() ) );
+        // System.err.println( "Rows: " + java.util.Arrays.deepToString( rows.toArray() ) );
         // Ensure that the colNames and rows have the same number of columns
         if ( colNames.length != rows.get( 0 ).length ) {
             throw new RuntimeException( "Mismatch: colNames and rowData column count don't match" );

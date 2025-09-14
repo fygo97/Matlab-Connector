@@ -10,18 +10,18 @@ classdef Polypheny < handle
     
     methods
 
-        %  
-        function PolyWrapper = Polypheny(language, url, user, password )
-            % Polypheny( LANGUAGE, URL, USER, PASSWORD ): Set up Java connection + executor
-            % LANGUAGE:  The database language used for the query. Must be sql, mongoql or cypher.
-            % URL:       The database url
-            % USER:      The username
-            % PASSWORD:  The password
-            % Polywrapper: A Matlab object that is a wrapper for the two java classes
-            %              QueryExecutioner.java and PolyphenyConnection.java 
+        
+        function PolyWrapper = Polypheny( language, host, port, user, password )
+            % Polypheny( LANGUAGE, HOST, PORT, USER, PASSWORD ): Set up Java connection + executor
+            % LANGUAGE:  The database language ('sql', 'mongoql', 'cypher')
+            % HOST:      Database host (e.g. 'localhost')
+            % PORT:      Database port (integer)
+            % USER:      Username
+            % PASSWORD:  Password
+            
             PolyWrapper.language = language;
-            PolyWrapper.polyConnection = javaObject( "polyphenyconnector.PolyphenyConnection", url, user, password );
-            PolyWrapper.queryExecutor = javaObject( "polyphenyconnector.QueryExecutor", PolyWrapper.polyConnection );
+            PolyWrapper.polyConnection = javaObject("polyphenyconnector.PolyphenyConnection",host, int32(port), user, password );
+            PolyWrapper.queryExecutor = javaObject("polyphenyconnector.QueryExecutor", PolyWrapper.polyConnection );
         end
         
 
@@ -39,11 +39,14 @@ classdef Polypheny < handle
             elseif isscalar( r )
                 T = r;
 
+            elseif isa(r,'java.lang.Object[]') && numel(r) == 2
+                r = cell(r);
+                colNames = cell(r{1});
+                data     = cell(r{2});   % Object[][] → MATLAB cell
+                T = cell2table(data, 'VariableNames', colNames);
+
             else
-                % Expect Java side to return { colNames, data }
-                colNames = cell( r(1) );
-                data     = r(2);
-                T = cell2table( data, 'VariableNames', colNames );
+                T = []; % fallback to avoid cell2table crash
             end
         end
         

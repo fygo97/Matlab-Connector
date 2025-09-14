@@ -42,7 +42,7 @@ public class PolyphenyConnection {
     public void openIfNeeded() {
         if ( connection == null ) {
             try {
-                connection = DriverManager.getConnection( url, username, password );  // runs startLocalPolypheny if connection isn't responsive
+                connection = DriverManager.getConnection( url, username, password );
                 connection.setAutoCommit( true );  // make sure standard mode defaults to AutoCommit                       
             } catch ( SQLException e ) {
                 throw new RuntimeException( "Failed to open connection", e );

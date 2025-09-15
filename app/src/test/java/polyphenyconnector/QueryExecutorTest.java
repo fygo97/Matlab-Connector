@@ -2,7 +2,6 @@ package polyphenyconnector;
 
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
-
 import java.util.Arrays;
 import java.util.List;
 
@@ -210,6 +209,8 @@ public class QueryExecutorTest {
 
     @Test
     void testBatchInsertEmployees() {
+
+        // Insert the List of queries
         List<String> queries = Arrays.asList(
                 "INSERT INTO unittest_namespace.batch_table VALUES (1, 'Alice', 'F', DATE '1990-01-15', 1001)",
                 "INSERT INTO unittest_namespace.batch_table VALUES (2, 'Bob', 'M', DATE '1989-05-12', 1002)",
@@ -226,17 +227,43 @@ public class QueryExecutorTest {
                 "INSERT INTO unittest_namespace.batch_table VALUES (13, 'Beya', 'F', DATE '1994-05-25', 1013)"
         );
 
+        // Do the batch execution using executeBatch(...)
         int[] counts = myexecutor.executeBatch( "sql", queries );
 
+        // Test that the lenghth of the counts vector is 13 (for 13 queries in the queries liest).
         assertEquals( 13, counts.length, "Batch should return 13 results" );
+
+        // Test the i-th entry in the counts vector is actually 1 (because the i-th query changed exactly 1 row)
         for ( int c : counts ) {
             assertEquals( 1, c, "Each INSERT should affect exactly 1 row" );
         }
 
+        // Test the result has the correct type
         Object result = myexecutor.execute( "sql", "SELECT COUNT(*) FROM unittest_namespace.batch_table" );
         assertTrue( result instanceof Long || result instanceof Integer );
+
+        // Test the rowcount is correct.
         int rowCount = ((Number) result).intValue();
         assertEquals( 13, rowCount, "Table should contain 13 rows after batch insert" );
+    }
+
+
+    @Test
+    void testBatchRollbackOnFailure() {
+        myexecutor.execute( "sql", "DELETE FROM unittest_namespace.batch_table" );
+
+        List<String> queries = Arrays.asList(
+                "INSERT INTO unittest_namespace.batch_table VALUES (1, 'Alice')",
+                "Purposefully messed up query message to produce a failure" // duplicate PK
+        );
+
+        assertThrows( RuntimeException.class, () -> {
+            myexecutor.executeBatch( "sql", queries );
+        } );
+
+        Object result = myexecutor.execute( "sql", "SELECt * FROM unittest_namespace.batch_table" );
+        // Polypheny just reports 0 instead of throwing
+        assertNull( result );
     }
 
 }

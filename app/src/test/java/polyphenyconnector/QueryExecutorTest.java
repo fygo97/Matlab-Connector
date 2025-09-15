@@ -250,19 +250,22 @@ public class QueryExecutorTest {
 
     @Test
     void testBatchRollbackOnFailure() {
-        myexecutor.execute( "sql", "DELETE FROM unittest_namespace.batch_table" );
 
+        // Prepare one correct and one ill posed SQL statement to query as batch later.
         List<String> queries = Arrays.asList(
                 "INSERT INTO unittest_namespace.batch_table VALUES (1, 'Alice')",
                 "Purposefully messed up query message to produce a failure" // duplicate PK
         );
 
+        // Run the ill posed batch query and test an exception is thrown.
         assertThrows( RuntimeException.class, () -> {
             myexecutor.executeBatch( "sql", queries );
         } );
 
+        // Query the whole table to make sure it is really empty.
         Object result = myexecutor.execute( "sql", "SELECt * FROM unittest_namespace.batch_table" );
-        // Polypheny just reports 0 instead of throwing
+
+        // Test the query comes back as null i.e. the executeBatch has indeed been rolled back and the table is unchanged
         assertNull( result );
     }
 

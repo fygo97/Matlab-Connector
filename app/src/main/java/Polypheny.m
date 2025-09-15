@@ -1,6 +1,6 @@
 classdef Polypheny < handle
 % POLYPHENY MATLAB wrapper for the Polypheny Java connector. Wraps polyphenyconnector.PolyphenyConnection 
-% and QueryExecutor to run queries from MATLAB
+% and polyphenyconnector.QueryExecutor to run queries from MATLAB
     properties (Access = private)
         language          % 'sql' | 'mongoql' | 'cypher'
         polyConnection    % Java PolyphenyConnection
@@ -48,6 +48,24 @@ classdef Polypheny < handle
             else
                 T = []; % fallback to avoid cell2table crash
             end
+        end
+
+        function result = queryBatch( PolyWrapper, queryList )
+            % queryBatch( POLYWRAPPER, QUERYLIST ): Execute batch of non-SELECT statements
+            % QUERYLIST must be a cell array of SQL strings (INSERT, UPDATE, DELETE, etc.)
+            %
+            % Returns: int array with rows affected per statement
+
+            if ~iscell( queryList ) % cell is the Matlab List type
+                error( 'queryBatch expects a cell array of SQL strings' );
+            end
+            
+            javaList = java.util.ArrayList();
+            for i = 1:numel(queryList)
+                javaList.add( string(queryList{i}) );
+            end
+            java_result = PolyWrapper.queryExecutor.executeBatch( string(PolyWrapper.language), javaList );
+            result = double(java_result(:))';
         end
         
         function close( PolyWrapper )

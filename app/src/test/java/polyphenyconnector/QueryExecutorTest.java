@@ -3,6 +3,9 @@ package polyphenyconnector;
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.Arrays;
+import java.util.List;
+
 public class QueryExecutorTest {
 
     private static PolyphenyConnection myconnection;
@@ -14,22 +17,31 @@ public class QueryExecutorTest {
 
         // Wait for Polypheny to be available and connect to localhost. We do this because we run all the JUnit tests on our local machine. 
         PolyphenyConnectionTestHelper.waitForPolypheny();
+        Thread.sleep( 4000 );
         myconnection = new PolyphenyConnection( "localhost", 20590, "pa", "" );
         myexecutor = new QueryExecutor( myconnection );
 
+        // 1. Setup tables for .execute()
         // Delete any TABLE called <unittest_table> and any NAMESPACE <unittest_namespace> if it exists. This is important so we can insert it
         // cleanly, in case tests break mid run the cleanup "@Afterall" might not have been executed properly.
         try {
-            myexecutor.execute( "sql", "DROP TABLE unittest_namespace.unittest_table" );
-        } catch ( Exception ignored ) {
-        }
-        try {
+            myexecutor.execute( "sql", "DROP TABLE IF EXISTS unittest_namespace.unittest_table" );
             myexecutor.execute( "sql", "DROP NAMESPACE unittest_namespace" );
         } catch ( Exception ignored ) {
         }
+
         // Creates the NAMESPACE <unittest_namespace> and TABLE <unittest_table>.
         myexecutor.execute( "sql", "CREATE NAMESPACE unittest_namespace" );
         myexecutor.execute( "sql", "CREATE TABLE unittest_namespace.unittest_table (id INT NOT NULL, name VARCHAR(100), PRIMARY KEY(id))" );
+
+        // 2. Setup tables for executeBatch()
+        // Delete any tables that might still exist as described before.
+        try {
+            myexecutor.execute( "sql", "DROP TABLE IF EXISTS unittest_namespace.batch_table" );
+        } catch ( Exception ignored ) {
+        }
+        myexecutor.execute( "sql", "CREATE TABLE unittest_namespace.batch_table (" + "emp_id INT NOT NULL, " + "name VARCHAR(100), " + "gender VARCHAR(10), " + "birthday DATE, " + "employee_id INT, " + "PRIMARY KEY(emp_id))" );
+
     }
 
 
@@ -37,8 +49,23 @@ public class QueryExecutorTest {
     static void tearDownNamespaceAndTable() {
         // Cleans up the TABLE and NAMESPACE we created so we leave no trace after the tests.
         myexecutor.execute( "sql", "DROP TABLE IF EXISTS unittest_namespace.unittest_table" );
+        myexecutor.execute( "sql", "DROP TABLE IF EXISTS unittest_namespace.batch_table" );
         myexecutor.execute( "sql", "DROP NAMESPACE IF EXISTS unittest_namespace" );
         myconnection.close();
+    }
+
+
+    @BeforeEach
+    void clearTable() {
+        myexecutor.execute( "sql", "DELETE FROM unittest_namespace.unittest_table" );
+        myexecutor.execute( "sql", "DELETE FROM unittest_namespace.batch_table" );
+    }
+
+
+    @AfterEach
+    void clearTableAfter() {
+        myexecutor.execute( "sql", "DELETE FROM unittest_namespace.unittest_table" );
+        myexecutor.execute( "sql", "DELETE FROM unittest_namespace.batch_table" );
     }
 
     // ─────────────────────────────
@@ -51,12 +78,6 @@ public class QueryExecutorTest {
         Object result = myexecutor.execute( "sql", "SELECT 42 AS answer" );
         assertTrue( result instanceof Integer, "Expected an integer scalar" );
         assertEquals( 42, result );
-    }
-
-
-    @BeforeEach
-    void clearTable() {
-        myexecutor.execute( "sql", "DELETE FROM unittest_namespace.unittest_table" );
     }
 
 
@@ -184,6 +205,38 @@ public class QueryExecutorTest {
         // Test that the query comes back null.
         Object result = myexecutor.execute( "sql", "SELECT * FROM unittest_namespace.unittest_table WHERE name = 'Bob'" );
         assertNull( result, "After DELETE the table should be empty" );
+    }
+
+
+    @Test
+    void testBatchInsertEmployees() {
+        List<String> queries = Arrays.asList(
+                "INSERT INTO unittest_namespace.batch_table VALUES (1, 'Alice', 'F', DATE '1990-01-15', 1001)",
+                "INSERT INTO unittest_namespace.batch_table VALUES (2, 'Bob', 'M', DATE '1989-05-12', 1002)",
+                "INSERT INTO unittest_namespace.batch_table VALUES (3, 'Jane', 'F', DATE '1992-07-23', 1003)",
+                "INSERT INTO unittest_namespace.batch_table VALUES (4, 'Tim', 'M', DATE '1991-03-03', 1004)",
+                "INSERT INTO unittest_namespace.batch_table VALUES (5, 'Alex', 'M', DATE '1994-11-11', 1005)",
+                "INSERT INTO unittest_namespace.batch_table VALUES (6, 'Mason', 'M', DATE '1988-04-22', 1006)",
+                "INSERT INTO unittest_namespace.batch_table VALUES (7, 'Rena', 'F', DATE '1995-06-17', 1007)",
+                "INSERT INTO unittest_namespace.batch_table VALUES (8, 'Christopher', 'M', DATE '1987-08-09', 1008)",
+                "INSERT INTO unittest_namespace.batch_table VALUES (9, 'Lexi', 'F', DATE '1996-09-30', 1009)",
+                "INSERT INTO unittest_namespace.batch_table VALUES (10, 'Baen', 'M', DATE '1990-10-05', 1010)",
+                "INSERT INTO unittest_namespace.batch_table VALUES (11, 'Ricardo', 'M', DATE '1986-12-12', 1011)",
+                "INSERT INTO unittest_namespace.batch_table VALUES (12, 'Tim', 'M', DATE '1993-02-02', 1012)",
+                "INSERT INTO unittest_namespace.batch_table VALUES (13, 'Beya', 'F', DATE '1994-05-25', 1013)"
+        );
+
+        int[] counts = myexecutor.executeBatch( "sql", queries );
+
+        assertEquals( 13, counts.length, "Batch should return 13 results" );
+        for ( int c : counts ) {
+            assertEquals( 1, c, "Each INSERT should affect exactly 1 row" );
+        }
+
+        Object result = myexecutor.execute( "sql", "SELECT COUNT(*) FROM unittest_namespace.batch_table" );
+        assertTrue( result instanceof Long || result instanceof Integer );
+        int rowCount = ((Number) result).intValue();
+        assertEquals( 13, rowCount, "Table should contain 13 rows after batch insert" );
     }
 
 }

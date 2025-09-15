@@ -18,7 +18,6 @@ public class QuickTest {
             Object r2 = exec.execute( "sql", "SELECT 1 AS a, 2 AS b UNION ALL SELECT 3, 4" );
             printTable( r2 );
 
-            //TODO: change the empid test to something thats independent of that.
             // 3) First row from emps (1-row table)
             Object r3 = exec.execute( "sql", "SELECT * FROM emps LIMIT 1" );
             System.out.println( "First row from emps:" );

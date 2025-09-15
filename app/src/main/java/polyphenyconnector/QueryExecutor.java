@@ -15,8 +15,7 @@ public class QueryExecutor {
      * 
      * @param polyconnection: PolyphenyConnection object that holds the connection
      * details to the Database. It's used to execute queries
-     * @return: Object of the query (SQL: empty, scalar or table; MongoQL: TODO;
-     * Cypher: TODO)
+     * @return: Object of the query (SQL: empty, scalar or table; MongoQL: TODO; Cypher: TODO)
      **/
     public QueryExecutor( PolyphenyConnection polyconnection ) {
         this.polyconnection = polyconnection;
@@ -27,12 +26,10 @@ public class QueryExecutor {
      * @Description
      * - Executes the query depending on the language given by the user
      * 
-     * @param language: The database language that is used (e.g. SQL, MongoQL,
-     * Cypher)
+     * @param language: The database language that is used (e.g. SQL, MongoQL,Cypher)
      * @param query: The query-text to be executed (e.g. FROM emps SELECT *)
      * 
-     * @return: ResultToMatlab(rs) which is a Matlab compatible object that is cast
-     * to the Matlab user.
+     * @return: ResultToMatlab(rs) which is a Matlab compatible object that is cast to the Matlab user.
      **/
     public Object execute( String language, String query ) {
 
@@ -69,13 +66,62 @@ public class QueryExecutor {
 
     /**
      * @Description
+     * This function is capable of executing a List of non-SELECT SQL statements in one single Matlab-Java crossing. All SQL statements
+     * except SELECT are supported. For further information consult the Polyphenys JDBC Driver documentation.
+     * 
+     * @param language The database language that is used (e.g. SQL, MongoQL,Cypher)
+     * @param query_list The list of query strings to be executed.
+     * @return int[] result An array of integers, where the i-th entry will denote for the i-th query how many rows were touched, e.g.
+     * n: n rows were updated, 0: no rows were touched.
+     */
+    public int[] executeBatch( String language, List<String> query_list ) {
+
+        polyconnection.openIfNeeded();
+
+        switch ( language.toLowerCase() ) {
+            default:
+                System.err.println( "Unsupported language: " + language );
+
+            case "sql":
+                try {
+                    polyconnection.beginTransaction();
+                    try ( Statement stmt = polyconnection.getConnection().createStatement() ) {
+                        for ( String query : query_list ) {
+                            String first = query.trim().toUpperCase();
+                            if ( first.startsWith( "SELECT" ) ) {
+                                throw new UnsupportedOperationException( "Batch execution does not support SELECT statements." );
+                            }
+                            stmt.addBatch( query );
+                        }
+                        int[] result = stmt.executeBatch();
+                        polyconnection.commitTransaction();
+                        return result;
+                    } catch ( Exception e ) {
+                        polyconnection.rollbackTransaction();
+                        throw new RuntimeException( "SQL batch execution failed. Transaction was rolled back: " + e.getMessage(), e );
+                    }
+                } catch ( SQLException e ) {
+                    throw new RuntimeException( "Failed to manage transaction", e );
+                }
+
+            case "mongoql":
+                throw new UnsupportedOperationException( "MongoQL batch execution not yet implemented." );
+
+            case "cypher":
+                throw new UnsupportedOperationException( "Cypher batch execution not yet implemented." );
+        }
+
+    }
+
+
+    /**
+     * @Description
      * - Casts the result of the queries to MatlabObjects, depending on
      * the Database language (SQL, MongoQL, Cypher)
      * 
      * @param rs: The result object of the query of type ResultSet
      * 
-     * @return: Result from the query which is either null/scalar/table (SQL), TODO document (MongoQL)
-     * or (Cypher)
+     * @return: Result from the query which is either null/scalar/table (SQL), TODO document (MongoQL, or (Cypher)
      **/
     public Object ResultToMatlab( ResultSet rs ) throws Exception {
 

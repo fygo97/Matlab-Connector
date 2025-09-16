@@ -36,8 +36,7 @@ public class QueryExecutor {
         polyconnection.openIfNeeded();
         switch ( language.toLowerCase() ) {
             default:
-                System.err.println( "Unsupported language: " + language );
-                return null;
+                throw new UnsupportedOperationException( "Unsupported language: " + language );
 
             case "sql":
                 try ( Statement stmt = polyconnection.getConnection().createStatement() ) {
@@ -80,7 +79,7 @@ public class QueryExecutor {
 
         switch ( language.toLowerCase() ) {
             default:
-                System.err.println( "Unsupported language: " + language );
+                throw new UnsupportedOperationException( "Unsupported language: " + language );
 
             case "sql":
                 try {

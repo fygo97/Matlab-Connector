@@ -6,8 +6,7 @@ classdef PolyphenyWrapperTest < matlab.unittest.TestCase
     methods (TestMethodSetup)
         function setupConnection(testCase)
             startup;
-            testCase.conn = polypheny.Polypheny( ...
-                'sql', 'localhost', int32(20590), 'pa', '' );
+            testCase.conn = polypheny.Polypheny('localhost', int32(20590), 'pa', '' );
         end
     end
     
@@ -19,16 +18,16 @@ classdef PolyphenyWrapperTest < matlab.unittest.TestCase
     
     methods (Test)
         function testScalar(testCase)
-            r = testCase.conn.query("SELECT 1 AS x");
+            r = testCase.conn.query( "sql" ,"SELECT 1 AS x");
             testCase.verifyEqual(r, 1);
         end
         
         function testTable(testCase)
-            testCase.conn.query("DROP TABLE IF EXISTS wrapper_test");
-            testCase.conn.query("CREATE TABLE wrapper_test (id INTEGER PRIMARY KEY, name VARCHAR)");
-            testCase.conn.query("INSERT INTO wrapper_test VALUES (1,'Alice'),(2,'Bob')");
+            testCase.conn.query("sql" ,"DROP TABLE IF EXISTS wrapper_test");
+            testCase.conn.query("sql" ,"CREATE TABLE wrapper_test (id INTEGER PRIMARY KEY, name VARCHAR)");
+            testCase.conn.query("sql" ,"INSERT INTO wrapper_test VALUES (1,'Alice'),(2,'Bob')");
 
-            T = testCase.conn.query("SELECT * FROM wrapper_test ORDER BY id");
+            T = testCase.conn.query("sql" ,"SELECT * FROM wrapper_test ORDER BY id");
 
             if istable(T)
                 % Expected: table output with column "name"
@@ -42,29 +41,30 @@ classdef PolyphenyWrapperTest < matlab.unittest.TestCase
         end
         
         function testEmpty(testCase)
-            T = testCase.conn.query("SELECT * FROM wrapper_test WHERE id=999");
+            T = testCase.conn.query("sql" ,"SELECT * FROM wrapper_test WHERE id=999");
             testCase.verifyEmpty(T);
         end
 
-                function testBatchInsert(testCase)
+        function testBatchInsert(testCase)
             % Prepare table
-            testCase.conn.query("DROP TABLE IF EXISTS batch_test");
-            testCase.conn.query("CREATE TABLE batch_test (id INTEGER PRIMARY KEY, name VARCHAR)");
+            testCase.conn.query("sql" ,"DROP TABLE IF EXISTS batch_test");
+            testCase.conn.query("sql" ,"CREATE TABLE batch_test (id INTEGER PRIMARY KEY, name VARCHAR)");
 
             % Batch insert 2 rows
             queries = { ...
                 "INSERT INTO batch_test VALUES (1,'Alice')", ...
                 "INSERT INTO batch_test VALUES (2,'Bob')" ...
             };
-            res = testCase.conn.queryBatch(queries);
+            result = testCase.conn.queryBatch("sql" ,queries);
 
             % Verify JDBC return codes
-            testCase.verifyEqual(res, [1 1]);
+            testCase.verifyEqual(result, [1 1]);
 
             % Verify table contents
-            T = testCase.conn.query("SELECT id, name FROM batch_test ORDER BY id");
+            T = testCase.conn.query("sql" ,"SELECT id, name FROM batch_test ORDER BY id");
             testCase.verifyEqual(T.id, [1; 2]);
             testCase.verifyEqual(string(T.name), ["Alice"; "Bob"]);
         end
+        
     end
 end

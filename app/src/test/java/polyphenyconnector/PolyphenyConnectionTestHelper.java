@@ -1,6 +1,7 @@
 package polyphenyconnector;
 
 import java.sql.DriverManager;
+import java.sql.SQLException;
 
 public class PolyphenyConnectionTestHelper {
 
@@ -29,6 +30,12 @@ public class PolyphenyConnectionTestHelper {
         if ( !ready ) {
             throw new RuntimeException( "Polypheny did not become available within 7 seconds." );
         }
+    }
+
+
+    public static void ensurePostgresAdapter( PolyphenyConnection conn ) throws SQLException {
+        QueryExecutor exec = new QueryExecutor( conn );
+        exec.execute( "sql", "CREATE ADAPTER IF NOT EXISTS postgresql1 USING postgresql ..." );
     }
 
 }

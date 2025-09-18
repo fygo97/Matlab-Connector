@@ -24,3 +24,5 @@ app\build\libs
 
 # ignore the matlab add-on folder structure
 matlab-polypheny-connector
+
+/matlab-polypheny-connector/Toolbox1/

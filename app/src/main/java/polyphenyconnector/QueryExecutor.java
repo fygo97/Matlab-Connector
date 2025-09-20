@@ -27,12 +27,15 @@ public class QueryExecutor {
      * - Executes the query depending on the language given by the user
      * 
      * @param language: The database language that is used (e.g. SQL, MongoQL,Cypher)
+     * @param namespace: The namespace in the query string. For SQL this argument as no effect as we use JDBC's
+     * executeQuery(...)/executeUpdate(...). For MQL this argument will be passed to JDBC's execute(...) function. For further
+     * information consult Polpyheny's web documentation.
      * @param query: The query-text to be executed (e.g. FROM emps SELECT *)
      * 
      * @return: ResultToMatlab(rs) which is a Matlab compatible object that is cast to the Matlab user.
      **/
-    public Object execute( String language, String query ) {
-
+    public Object execute( String language, String namespace, String query ) {
+        checkNamespace( language, namespace );
         polyconnection.openIfNeeded();
         switch ( language.toLowerCase() ) {
             default:
@@ -108,12 +111,15 @@ public class QueryExecutor {
      * except SELECT are supported. For further information consult the Polyphenys JDBC Driver documentation.
      * 
      * @param language The database language that is used (e.g. SQL, MongoQL,Cypher)
+     * @param namespace: The namespace in the query string. For SQL this argument as no effect as we use JDBC's
+     * executeQuery(...)/executeUpdate(...). For MQL this argument will be passed to JDBC's execute(...) function. For further
+     * information consult Polpyheny's web documentation.
      * @param query_list The list of query strings to be executed.
      * @return int[] result An array of integers, where the i-th entry will denote for the i-th query how many rows were touched, e.g.
      * n: n rows were updated, 0: no rows were touched.
      */
-    public int[] executeBatch( String language, List<String> query_list ) {
-
+    public int[] executeBatch( String language, String namespace, List<String> query_list ) {
+        checkNamespace( language, namespace );
         polyconnection.openIfNeeded();
 
         switch ( language.toLowerCase() ) {
@@ -236,6 +242,19 @@ public class QueryExecutor {
             }
         }
         return new RuntimeException( "SQL execution failed: " + e.getMessage(), e );
+    }
+
+
+    private static void checkNamespace( String language, String namespace ) {
+        if ( namespace == null || namespace.isEmpty() ) {
+            if ( language.equalsIgnoreCase( "sql" ) ) {
+                // fine: default namespace is used implicitly
+            } else {
+                throw new IllegalArgumentException(
+                        "For " + language + " queries a namespace must be specified"
+                );
+            }
+        }
     }
 
 }

@@ -18,16 +18,16 @@ classdef PolyphenyWrapperTest < matlab.unittest.TestCase
     
     methods (Test)
         function testScalar(testCase)
-            r = testCase.conn.query( "sql" ,"SELECT 1 AS x");
+            r = testCase.conn.query( "sql" , "" , "SELECT 1 AS x");
             testCase.verifyEqual(r, 1);
         end
         
         function testTable(testCase)
-            testCase.conn.query("sql" ,"DROP TABLE IF EXISTS wrapper_test");
-            testCase.conn.query("sql" ,"CREATE TABLE wrapper_test (id INTEGER PRIMARY KEY, name VARCHAR)");
-            testCase.conn.query("sql" ,"INSERT INTO wrapper_test VALUES (1,'Alice'),(2,'Bob')");
+            testCase.conn.query("sql" , "" , "DROP TABLE IF EXISTS wrapper_test");
+            testCase.conn.query("sql" , "" , "CREATE TABLE wrapper_test (id INTEGER PRIMARY KEY, name VARCHAR)");
+            testCase.conn.query("sql" , "" , "INSERT INTO wrapper_test VALUES (1,'Alice'),(2,'Bob')");
 
-            T = testCase.conn.query("sql" ,"SELECT * FROM wrapper_test ORDER BY id");
+            T = testCase.conn.query("sql" , "" , "SELECT * FROM wrapper_test ORDER BY id");
 
             if istable(T)
                 % Expected: table output with column "name"
@@ -41,7 +41,7 @@ classdef PolyphenyWrapperTest < matlab.unittest.TestCase
         end
         
         function testEmpty(testCase)
-            T = testCase.conn.query("sql" ,"SELECT * FROM wrapper_test WHERE id=999");
+            T = testCase.conn.query("sql" , "" , "SELECT * FROM wrapper_test WHERE id=999");
             testCase.verifyEmpty(T);
         end
 

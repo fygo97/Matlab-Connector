@@ -1,7 +1,6 @@
 package polyphenyconnector;
 
 import java.sql.DriverManager;
-import java.sql.SQLException;
 
 public class PolyphenyConnectionTestHelper {
 
@@ -32,10 +31,11 @@ public class PolyphenyConnectionTestHelper {
         }
     }
 
-
+    /* 
     public static void ensurePostgresAdapter( PolyphenyConnection conn ) throws SQLException {
         QueryExecutor exec = new QueryExecutor( conn );
-        exec.execute( "sql", "CREATE ADAPTER IF NOT EXISTS postgresql1 USING postgresql ..." );
+        exec.execute( "sql", "unittest_namespace", "CREATE ADAPTER IF NOT EXISTS postgresql1 USING postgresql ..." );
     }
+    */
 
 }

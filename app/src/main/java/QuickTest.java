@@ -11,20 +11,20 @@ public class QuickTest {
             QueryExecutor exec = new QueryExecutor( conn );
 
             // 1) Scalar smoke test
-            Object r1 = exec.execute( "sql", "SELECT 1 AS x" );
+            Object r1 = exec.execute( "sql", "", "SELECT 1 AS x" );
             System.out.println( "Scalar result: " + r1 );
 
             // 2) Table smoke test
-            Object r2 = exec.execute( "sql", "SELECT 1 AS a, 2 AS b UNION ALL SELECT 3, 4" );
+            Object r2 = exec.execute( "sql", "", "SELECT 1 AS a, 2 AS b UNION ALL SELECT 3, 4" );
             printTable( r2 );
 
             // 3) First row from emps (1-row table)
-            Object r3 = exec.execute( "sql", "SELECT * FROM emps LIMIT 1" );
+            Object r3 = exec.execute( "sql", "emps", "SELECT * FROM emps LIMIT 1" );
             System.out.println( "First row from emps:" );
             printTable( r3 );
 
             // 4) Scalar from emps
-            Object r4 = exec.execute( "sql", "SELECT empid FROM emps LIMIT 1" );
+            Object r4 = exec.execute( "sql", "emps", "SELECT empid FROM emps LIMIT 1" );
             System.out.println( "First empid (scalar): " + r4 );
 
         } finally {

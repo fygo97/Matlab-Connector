@@ -2,6 +2,7 @@ package polyphenyconnector;
 
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -24,22 +25,22 @@ public class QueryExecutorTest {
         // Delete any TABLE called <unittest_table> and any NAMESPACE <unittest_namespace> if it exists. This is important so we can insert it
         // cleanly, in case tests break mid run the cleanup "@Afterall" might not have been executed properly.
         try {
-            myexecutor.execute( "sql", "DROP TABLE IF EXISTS unittest_namespace.unittest_table" );
-            myexecutor.execute( "sql", "DROP NAMESPACE IF EXISTS unittest_namespace" );
+            myexecutor.execute( "sql", "unittest_namespace", "DROP TABLE IF EXISTS unittest_namespace.unittest_table" );
+            myexecutor.execute( "sql", "unittest_namespace", "DROP NAMESPACE IF EXISTS unittest_namespace" );
         } catch ( Exception ignored ) {
         }
 
         // Creates the NAMESPACE <unittest_namespace> and TABLE <unittest_table>.
-        myexecutor.execute( "sql", "CREATE NAMESPACE unittest_namespace" );
-        myexecutor.execute( "sql", "CREATE TABLE unittest_namespace.unittest_table (id INT NOT NULL, name VARCHAR(100), PRIMARY KEY(id))" );
+        myexecutor.execute( "sql", "unittest_namespace", "CREATE NAMESPACE unittest_namespace" );
+        myexecutor.execute( "sql", "unittest_namespace", "CREATE TABLE unittest_namespace.unittest_table (id INT NOT NULL, name VARCHAR(100), PRIMARY KEY(id))" );
 
         // 2. Setup tables for executeBatch()
         // Delete any tables that might still exist as described before.
         try {
-            myexecutor.execute( "sql", "DROP TABLE IF EXISTS unittest_namespace.batch_table" );
+            myexecutor.execute( "sql", "unittest_namespace", "DROP TABLE IF EXISTS unittest_namespace.batch_table" );
         } catch ( Exception ignored ) {
         }
-        myexecutor.execute( "sql", "CREATE TABLE unittest_namespace.batch_table (" + "emp_id INT NOT NULL, " + "name VARCHAR(100), " + "gender VARCHAR(10), " + "birthday DATE, " + "employee_id INT, " + "PRIMARY KEY(emp_id))" );
+        myexecutor.execute( "sql", "unittest_namespace", "CREATE TABLE unittest_namespace.batch_table (" + "emp_id INT NOT NULL, " + "name VARCHAR(100), " + "gender VARCHAR(10), " + "birthday DATE, " + "employee_id INT, " + "PRIMARY KEY(emp_id))" );
 
     }
 
@@ -47,24 +48,24 @@ public class QueryExecutorTest {
     @AfterAll
     static void tearDownNamespaceAndTable() {
         // Cleans up the TABLE and NAMESPACE we created so we leave no trace after the tests.
-        myexecutor.execute( "sql", "DROP TABLE IF EXISTS unittest_namespace.unittest_table" );
-        myexecutor.execute( "sql", "DROP TABLE IF EXISTS unittest_namespace.batch_table" );
-        myexecutor.execute( "sql", "DROP NAMESPACE IF EXISTS unittest_namespace" );
+        myexecutor.execute( "sql", "unittest_namespace", "DROP TABLE IF EXISTS unittest_namespace.unittest_table" );
+        myexecutor.execute( "sql", "unittest_namespace", "DROP TABLE IF EXISTS unittest_namespace.batch_table" );
+        myexecutor.execute( "sql", "unittest_namespace", "DROP NAMESPACE IF EXISTS unittest_namespace" );
         myconnection.close();
     }
 
 
     @BeforeEach
     void clearTable() {
-        myexecutor.execute( "sql", "DELETE FROM unittest_namespace.unittest_table" );
-        myexecutor.execute( "sql", "DELETE FROM unittest_namespace.batch_table" );
+        myexecutor.execute( "sql", "unittest_namespace", "DELETE FROM unittest_namespace.unittest_table" );
+        myexecutor.execute( "sql", "unittest_namespace", "DELETE FROM unittest_namespace.batch_table" );
     }
 
 
     @AfterEach
     void clearTableAfter() {
-        myexecutor.execute( "sql", "DELETE FROM unittest_namespace.unittest_table" );
-        myexecutor.execute( "sql", "DELETE FROM unittest_namespace.batch_table" );
+        myexecutor.execute( "sql", "unittest_namespace", "DELETE FROM unittest_namespace.unittest_table" );
+        myexecutor.execute( "sql", "unittest_namespace", "DELETE FROM unittest_namespace.batch_table" );
     }
 
     // ─────────────────────────────
@@ -74,7 +75,7 @@ public class QueryExecutorTest {
 
     @Test
     void testScalarLiteral() {
-        Object result = myexecutor.execute( "sql", "SELECT 42 AS answer" );
+        Object result = myexecutor.execute( "sql", "", "SELECT 42 AS answer" );
         assertTrue( result instanceof Integer, "Expected an integer scalar" );
         assertEquals( 42, result );
     }
@@ -82,14 +83,14 @@ public class QueryExecutorTest {
 
     @Test
     void testEmptyLiteral() {
-        Object result = myexecutor.execute( "sql", "SELECT * FROM (SELECT 1) t WHERE 1=0" );
+        Object result = myexecutor.execute( "sql", "", "SELECT * FROM (SELECT 1) t WHERE 1=0" );
         assertNull( result, "Query with no rows should return null" );
     }
 
 
     @Test
     void testTableLiteral() {
-        Object result = myexecutor.execute( "sql", "SELECT 1 AS a, 2 AS b UNION ALL SELECT 3, 4" );
+        Object result = myexecutor.execute( "sql", "", "SELECT 1 AS a, 2 AS b UNION ALL SELECT 3, 4" );
         assertTrue( result instanceof Object[], "Expected tabular result" );
 
         Object[] arr = (Object[]) result;
@@ -110,7 +111,7 @@ public class QueryExecutorTest {
     @Test
     void testInsert() {
         // Insert id = 1 and name = Alice into the table.
-        Object result = myexecutor.execute( "sql", "INSERT INTO unittest_namespace.unittest_table VALUES (1, 'Alice')" );
+        Object result = myexecutor.execute( "sql", "unittest_namespace", "INSERT INTO unittest_namespace.unittest_table VALUES (1, 'Alice')" );
         assertTrue( result instanceof Integer, "Expected an integer." );
         assertEquals( result, 1, "result should equal 1." );
     }
@@ -119,10 +120,10 @@ public class QueryExecutorTest {
     @Test
     void testInsertAndSelect() {
         // Insert id = 1 and name = Alice into the table.
-        myexecutor.execute( "sql", "INSERT INTO unittest_namespace.unittest_table VALUES (1, 'Alice')" );
+        myexecutor.execute( "sql", "unittest_namespace", "INSERT INTO unittest_namespace.unittest_table VALUES (1, 'Alice')" );
 
         // Query the result from the table.
-        Object result = myexecutor.execute( "sql", "SELECT id, name FROM unittest_namespace.unittest_table" );
+        Object result = myexecutor.execute( "sql", "unittest_namespace", "SELECT id, name FROM unittest_namespace.unittest_table" );
 
         // Test that the result comes back as array.
         System.out.println( "Result is: " + result );
@@ -141,8 +142,8 @@ public class QueryExecutorTest {
 
     @Test
     void testScalarFromTable() {
-        myexecutor.execute( "sql", "INSERT INTO unittest_namespace.unittest_table VALUES (2, 'Carol')" );
-        Object result = myexecutor.execute( "sql", "SELECT id FROM unittest_namespace.unittest_table WHERE name = 'Carol'" );
+        myexecutor.execute( "sql", "unittest_namespace", "INSERT INTO unittest_namespace.unittest_table VALUES (2, 'Carol')" );
+        Object result = myexecutor.execute( "sql", "unittest_namespace", "SELECT id FROM unittest_namespace.unittest_table WHERE name = 'Carol'" );
         assertTrue( result instanceof Integer, "Expected scalar integer result" );
         assertEquals( 2, result );
     }
@@ -151,11 +152,11 @@ public class QueryExecutorTest {
     @Test
     void testInsertAndSelectMultipleRows() {
         // Insert id = 1,2 and name = Alice, Bob into the table.
-        myexecutor.execute( "sql", "INSERT INTO unittest_namespace.unittest_table VALUES (1, 'Alice')" );
-        myexecutor.execute( "sql", "INSERT INTO unittest_namespace.unittest_table VALUES (2, 'Bob')" );
+        myexecutor.execute( "sql", "unittest_namespace", "INSERT INTO unittest_namespace.unittest_table VALUES (1, 'Alice')" );
+        myexecutor.execute( "sql", "unittest_namespace", "INSERT INTO unittest_namespace.unittest_table VALUES (2, 'Bob')" );
 
         // Query the result from the table.
-        Object result = myexecutor.execute( "sql", "SELECT id, name FROM unittest_namespace.unittest_table ORDER BY id" );
+        Object result = myexecutor.execute( "sql", "unittest_namespace", "SELECT id, name FROM unittest_namespace.unittest_table ORDER BY id" );
 
         // Check the contents of the query are correct.
         Object[] arr = (Object[]) result;
@@ -178,11 +179,11 @@ public class QueryExecutorTest {
     void testQueryWithSpaces() {
         // Insert Bob into table.
         // Insert id = 1,2 and name = Alice, Bob into the table.
-        myexecutor.execute( "sql", "  INSERT INTO unittest_namespace.unittest_table VALUES (1, 'Alice')" );
-        myexecutor.execute( "sql", " INSERT INTO unittest_namespace.unittest_table VALUES (2, 'Bob')" );
+        myexecutor.execute( "sql", "unittest_namespace", "  INSERT INTO unittest_namespace.unittest_table VALUES (1, 'Alice')" );
+        myexecutor.execute( "sql", "unittest_namespace", " INSERT INTO unittest_namespace.unittest_table VALUES (2, 'Bob')" );
 
         // Query the result from the table.
-        Object result = myexecutor.execute( "sql", "SELECT id, name FROM unittest_namespace.unittest_table ORDER BY id" );
+        Object result = myexecutor.execute( "sql", "unittest_namespace", "SELECT id, name FROM unittest_namespace.unittest_table ORDER BY id" );
 
         // Check the contents of the query are correct.
         Object[] arr = (Object[]) result;
@@ -205,13 +206,13 @@ public class QueryExecutorTest {
     void testDeleteFromTable() {
 
         // Insert Bob into table.
-        myexecutor.execute( "sql", "INSERT INTO unittest_namespace.unittest_table VALUES (2, 'Bob')" );
+        myexecutor.execute( "sql", "unittest_namespace", "INSERT INTO unittest_namespace.unittest_table VALUES (2, 'Bob')" );
 
         // Delete Bob from table.
-        myexecutor.execute( "sql", "DELETE FROM unittest_namespace.unittest_table" );
+        myexecutor.execute( "sql", "unittest_namespace", "DELETE FROM unittest_namespace.unittest_table" );
 
         // Test that the query comes back null.
-        Object result = myexecutor.execute( "sql", "SELECT * FROM unittest_namespace.unittest_table WHERE name = 'Bob'" );
+        Object result = myexecutor.execute( "sql", "unittest_namespace", "SELECT * FROM unittest_namespace.unittest_table WHERE name = 'Bob'" );
         assertNull( result, "After DELETE the table should be empty" );
     }
 
@@ -237,7 +238,7 @@ public class QueryExecutorTest {
         );
 
         // Do the batch execution using executeBatch(...)
-        int[] counts = myexecutor.executeBatch( "sql", queries );
+        int[] counts = myexecutor.executeBatch( "sql", "unittest_namespace", queries );
 
         // Test that the lenghth of the counts vector is 13 (for 13 queries in the queries liest).
         assertEquals( 13, counts.length, "Batch should return 13 results" );
@@ -248,7 +249,7 @@ public class QueryExecutorTest {
         }
 
         // Test the result has the correct type
-        Object result = myexecutor.execute( "sql", "SELECT COUNT(*) FROM unittest_namespace.batch_table" );
+        Object result = myexecutor.execute( "sql", "unittest_namespace", "SELECT COUNT(*) FROM unittest_namespace.batch_table" );
         assertTrue( result instanceof Long || result instanceof Integer );
 
         // Test the rowcount is correct.
@@ -268,11 +269,11 @@ public class QueryExecutorTest {
 
         // Run the ill posed batch query and test an exception is thrown.
         assertThrows( RuntimeException.class, () -> {
-            myexecutor.executeBatch( "sql", queries );
+            myexecutor.executeBatch( "sql", "unittest_namespace", queries );
         } );
 
         // Query the whole table to make sure it is really empty.
-        Object result = myexecutor.execute( "sql", "SELECt * FROM unittest_namespace.batch_table" );
+        Object result = myexecutor.execute( "sql", "unittest_namespace", "SELECt * FROM unittest_namespace.batch_table" );
 
         // Test the query comes back as null i.e. the executeBatch has indeed been rolled back and the table is unchanged
         assertNull( result );
@@ -284,7 +285,7 @@ public class QueryExecutorTest {
         assertThrows( RuntimeException.class, () -> {
             PolyphenyConnection badConn = new PolyphenyConnection( "localhost", 9999, "pa", "" );
             QueryExecutor badExec = new QueryExecutor( badConn );
-            badExec.execute( "sql", "SELECT 1" );  // should fail to connect
+            badExec.execute( "sql", "unittest_namespace", "SELECT 1" );  // should fail to connect
         } );
     }
 
@@ -292,7 +293,7 @@ public class QueryExecutorTest {
     @Test
     void testSyntaxError() {
         RuntimeException ex = assertThrows( RuntimeException.class, () -> {
-            myexecutor.execute( "sql", "SELEC WRONG FROM nowhere" );  // typo: SELEC
+            myexecutor.execute( "sql", "unittest_namespace", "SELEC WRONG FROM nowhere" );  // typo: SELEC
         } );
         assertTrue( ex.getMessage().contains( "Syntax error" ) ||
                 ex.getMessage().contains( "execution failed" ),
@@ -308,10 +309,10 @@ public class QueryExecutorTest {
         );
 
         assertThrows( RuntimeException.class, () -> {
-            myexecutor.executeBatch( "sql", queries );
+            myexecutor.executeBatch( "sql", "unittest_namespace", queries );
         } );
 
-        Object result = myexecutor.execute( "sql", "SELECT * FROM unittest_namespace.batch_table" );
+        Object result = myexecutor.execute( "sql", "unittest_namespace", "SELECT * FROM unittest_namespace.batch_table" );
         assertNull( result, "Batch should have rolled back and left the table empty" );
     }
 

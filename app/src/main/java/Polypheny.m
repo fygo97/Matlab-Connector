@@ -27,13 +27,13 @@ classdef Polypheny < handle
         
 
         
-        function matlab_result = query( PolyWrapper, language, queryStr )
+        function matlab_result = query( PolyWrapper, language, namespace, queryStr )
             % query( POLYWRAPPER, QUERYSTR ): Execute query via QueryExecutor.java
             % POLYWRAPPER: The PolyWrapper Matlab object
             % LANGUAGE:    The language of the query string -> SQL, MongoQL, Cypher
             % QUERYSTR:    The queryStr set by the user
             % @return T:   The result of the query -> return type differs for SQL,MongoQl and Cypher
-            java_result = PolyWrapper.queryExecutor.execute(string(language), queryStr );
+            java_result = PolyWrapper.queryExecutor.execute(string(language), string(namespace), queryStr );
 
             % SQL case
             if language == "sql"
@@ -75,7 +75,7 @@ classdef Polypheny < handle
 
         end
 
-        function matlab_result = queryBatch( PolyWrapper, language, queryList )
+        function matlab_result = queryBatch( PolyWrapper, language, namespace, queryList )
             % queryBatch( POLYWRAPPER, QUERYLIST ): Execute batch of non-SELECT statements
             % QUERYLIST must be a cell array of SQL strings (INSERT, UPDATE, DELETE, etc.)
             %
@@ -89,7 +89,7 @@ classdef Polypheny < handle
             for i = 1:numel(queryList)
                 javaList.add( string(queryList{i}) );
             end
-            java_result = PolyWrapper.queryExecutor.executeBatch( string(language), javaList );
+            java_result = PolyWrapper.queryExecutor.executeBatch( string(language), string(namespace), javaList );
             matlab_result = double(java_result(:))';
         end
         

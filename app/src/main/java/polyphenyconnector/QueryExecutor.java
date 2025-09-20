@@ -40,26 +40,65 @@ public class QueryExecutor {
 
             case "sql":
                 try ( Statement stmt = polyconnection.getConnection().createStatement() ) {
+
                     String first = query.trim().toUpperCase();
 
+                    // SELECT statements
                     if ( first.startsWith( "SELECT" ) ) {
                         try ( ResultSet rs = stmt.executeQuery( query ) ) {
-                            return ResultToMatlab( rs );
+                            return SQLResultToMatlab( rs );
                         }
+
+                        // INSERT, UPDATE, DELETE, CREATE, DROP, ... statements    
                     } else {
-                        stmt.executeUpdate( query );  // INSERT, UPDATE, DELETE, CREATE, DROP, ...
+                        stmt.executeUpdate( query );
                         return null;
+
                     }
+
+                } catch ( SQLException e ) {
+                    throw translateSQLException( e );
                 } catch ( Exception e ) {
                     throw new RuntimeException( "SQL execution failed: " + e.getMessage(), e );
                 }
 
             case "mongoql":
-                throw new UnsupportedOperationException( "MongoQL execution not yet implemented." );
+                try ( Statement stmt = polyconnection.getConnection().createStatement(); ResultSet rs = stmt.executeQuery( query ) ) {
+
+                    List<Object> rows = new ArrayList<>();
+                    ResultSetMetaData md = rs.getMetaData();
+                    int cols = md.getColumnCount();
+
+                    while ( rs.next() ) {
+                        if ( cols == 1 ) {
+                            rows.add( rs.getObject( 1 ) );
+                        } else {
+                            Object[] row = new Object[cols];
+                            for ( int i = 0; i < cols; i++ ) {
+                                row[i] = rs.getObject( i + 1 );
+                            }
+                            rows.add( row );
+                        }
+                    }
+
+                    if ( rows.isEmpty() ) {
+                        return null;                             // empty query we return null
+                    } else if ( rows.size() == 1 && cols == 1 ) {
+                        return rows.get( 0 );              // single scalar or single String
+                    } else if ( cols == 1 ) {
+                        return rows.toArray( new String[0] );    // multiple JSON docs (i.e. a collection)
+                    } else {
+                        return rows.toArray( new Object[0] );    // fallback
+                    }
+
+                } catch ( Exception e ) {
+                    throw new RuntimeException( "MongoQL execution failed: " + e.getMessage(), e );
+                }
 
             case "cypher":
                 throw new UnsupportedOperationException( "Cypher execution not yet implemented." );
         }
+
     }
 
 
@@ -95,10 +134,14 @@ public class QueryExecutor {
                         int[] result = stmt.executeBatch();
                         polyconnection.commitTransaction();
                         return result;
+
+                    } catch ( SQLException e ) {
+                        throw translateSQLException( e );
                     } catch ( Exception e ) {
                         polyconnection.rollbackTransaction();
                         throw new RuntimeException( "SQL batch execution failed. Transaction was rolled back: " + e.getMessage(), e );
                     }
+
                 } catch ( SQLException e ) {
                     throw new RuntimeException( "Failed to manage transaction", e );
                 }
@@ -122,7 +165,7 @@ public class QueryExecutor {
      * 
      * @return: Result from the query which is either null/scalar/table (SQL), TODO document (MongoQL, or (Cypher)
      **/
-    public Object ResultToMatlab( ResultSet rs ) throws Exception {
+    public Object SQLResultToMatlab( ResultSet rs ) throws Exception {
 
         ResultSetMetaData meta = rs.getMetaData();
         int colCount = meta.getColumnCount();
@@ -163,10 +206,8 @@ public class QueryExecutor {
                 row[i] = rs.getObject( i + 1 ); // Saves each entry
             }
             rows.add( row ); // Append row to the List
-            // System.err.println( "Fetched row: " + java.util.Arrays.toString( row ) );
         } while ( rs.next() ); // First row already fetched above with rs.next() so we use do while
 
-        // System.err.println( "Rows: " + java.util.Arrays.deepToString( rows.toArray() ) );
         // Ensure that the colNames and rows have the same number of columns
         if ( colNames.length != rows.get( 0 ).length ) {
             throw new RuntimeException( "Mismatch: colNames and rowData column count don't match" );
@@ -175,6 +216,29 @@ public class QueryExecutor {
         ResultArray = rows.toArray( new Object[rows.size()][] );
 
         return new Object[]{ colNames, ResultArray };
+    }
+
+
+    /**
+     * @Description
+     * This method ensures that exceptions thrown by Polypheny (and propagated through the JDBC driver) due to user fault when calling
+     * execute or executeBatch are translated in a user-interpretable error to be propagated to Matlab, instead of just failing
+     * with an obscure error/exception.
+     * 
+     * @param e The exception caught. 08 denotes an error with the Polypheny connetion, 42 denotes a
+     * @return
+     */
+    private RuntimeException translateSQLException( SQLException e ) {
+        String state = e.getSQLState();
+        if ( state != null ) {
+            if ( state.startsWith( "08" ) ) {
+                return new RuntimeException( "Connection error: " + e.getMessage(), e );
+            }
+            if ( state.startsWith( "42" ) ) {
+                return new RuntimeException( "Syntax error in query: " + e.getMessage(), e );
+            }
+        }
+        return new RuntimeException( "SQL execution failed: " + e.getMessage(), e );
     }
 
 }

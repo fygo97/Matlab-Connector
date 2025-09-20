@@ -269,4 +269,41 @@ public class QueryExecutorTest {
         assertNull( result );
     }
 
+
+    @Test
+    void testConnectionFailure() {
+        assertThrows( RuntimeException.class, () -> {
+            PolyphenyConnection badConn = new PolyphenyConnection( "localhost", 9999, "pa", "" );
+            QueryExecutor badExec = new QueryExecutor( badConn );
+            badExec.execute( "sql", "SELECT 1" );  // should fail to connect
+        } );
+    }
+
+
+    @Test
+    void testSyntaxError() {
+        RuntimeException ex = assertThrows( RuntimeException.class, () -> {
+            myexecutor.execute( "sql", "SELEC WRONG FROM nowhere" );  // typo: SELEC
+        } );
+        assertTrue( ex.getMessage().contains( "Syntax error" ) ||
+                ex.getMessage().contains( "execution failed" ),
+                "Exception message should indicate syntax error" );
+    }
+
+
+    @Test
+    void testCommitFailureRollback() {
+        List<String> queries = Arrays.asList(
+                "INSERT INTO unittest_namespace.batch_table VALUES (1, 'Alice', 'F', DATE '1990-01-15', 1001)",
+                "Intentional nonsense to produce a failure" // PK violation
+        );
+
+        assertThrows( RuntimeException.class, () -> {
+            myexecutor.executeBatch( "sql", queries );
+        } );
+
+        Object result = myexecutor.execute( "sql", "SELECT * FROM unittest_namespace.batch_table" );
+        assertNull( result, "Batch should have rolled back and left the table empty" );
+    }
+
 }

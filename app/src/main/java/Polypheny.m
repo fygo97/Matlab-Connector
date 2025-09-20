@@ -27,32 +27,55 @@ classdef Polypheny < handle
         
 
         
-        function T = query( PolyWrapper, language, queryStr )
+        function matlab_result = query( PolyWrapper, language, queryStr )
             % query( POLYWRAPPER, QUERYSTR ): Execute query via QueryExecutor.java
             % POLYWRAPPER: The PolyWrapper Matlab object
             % LANGUAGE:    The language of the query string -> SQL, MongoQL, Cypher
             % QUERYSTR:    The queryStr set by the user
-            % @return T:   The result of the query -> return type differs for SQL,MongoQl and Cyper
+            % @return T:   The result of the query -> return type differs for SQL,MongoQl and Cypher
             java_result = PolyWrapper.queryExecutor.execute(string(language), queryStr );
-            
-            if isempty( java_result )
-                T = [];
 
-            elseif isscalar( java_result )
-                T = java_result;
+            % SQL case
+            if language == "sql"
+                if isempty( java_result )
+                    matlab_result = [];
 
-            elseif isa(java_result,'java.lang.Object[]') && numel(java_result) == 2
-                result = cell(java_result);
-                colNames = cell(result{1});
-                data     = cell(result{2});   % Object[][] → MATLAB cell
-                T = cell2table(data, 'VariableNames', colNames);
+                elseif isscalar( java_result )
+                    matlab_result = java_result;
 
-            else
-                T = []; % fallback to avoid cell2table crash
+                elseif isa(java_result,'java.lang.Object[]') && numel(java_result) == 2
+                    matlab_result = cell(java_result);
+                    colNames = cell(matlab_result{1});
+                    data     = cell(matlab_result{2});   % Object[][] → MATLAB cell
+                    matlab_result = cell2table(data, 'VariableNames', colNames);
+
+                else
+                    matlab_result = []; % fallback to avoid cell2table crash
+                end
+
+            % MongoQL case
+            elseif language == "mongoql"
+
+                if isscalar( java_result)
+                    matlab_result = java_result;
+
+                elseif ischar( java_result ) || isstring (java_result)
+                    matlab_result = string(java_result);
+
+                else
+                    try
+                        matlab_result = java_result
+                    catch ME %Matlab Exception
+                        disp("Error: " + ME.message)
+                    end
+                    
+                end
+
             end
+
         end
 
-        function result = queryBatch( PolyWrapper, language, queryList )
+        function matlab_result = queryBatch( PolyWrapper, language, queryList )
             % queryBatch( POLYWRAPPER, QUERYLIST ): Execute batch of non-SELECT statements
             % QUERYLIST must be a cell array of SQL strings (INSERT, UPDATE, DELETE, etc.)
             %
@@ -67,7 +90,7 @@ classdef Polypheny < handle
                 javaList.add( string(queryList{i}) );
             end
             java_result = PolyWrapper.queryExecutor.executeBatch( string(language), javaList );
-            result = double(java_result(:))';
+            matlab_result = double(java_result(:))';
         end
         
         function close( PolyWrapper )

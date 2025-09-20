@@ -51,8 +51,8 @@ public class QueryExecutor {
 
                         // INSERT, UPDATE, DELETE, CREATE, DROP, ... statements    
                     } else {
-                        stmt.executeUpdate( query );
-                        return null;
+                        int rs = stmt.executeUpdate( query );
+                        return rs;
 
                     }
 
@@ -65,30 +65,30 @@ public class QueryExecutor {
             case "mongoql":
                 try ( Statement stmt = polyconnection.getConnection().createStatement(); ResultSet rs = stmt.executeQuery( query ) ) {
 
-                    List<Object> rows = new ArrayList<>();
-                    ResultSetMetaData md = rs.getMetaData();
-                    int cols = md.getColumnCount();
+                    List<Object> Result = new ArrayList<>();
+                    ResultSetMetaData meta = rs.getMetaData();
+                    int colCount = meta.getColumnCount();
 
                     while ( rs.next() ) {
-                        if ( cols == 1 ) {
-                            rows.add( rs.getObject( 1 ) );
+                        if ( colCount == 1 ) {
+                            Result.add( rs.getObject( 1 ) );
                         } else {
-                            Object[] row = new Object[cols];
-                            for ( int i = 0; i < cols; i++ ) {
+                            Object[] row = new Object[colCount];
+                            for ( int i = 0; i < colCount; i++ ) {
                                 row[i] = rs.getObject( i + 1 );
                             }
-                            rows.add( row );
+                            Result.add( row );
                         }
                     }
 
-                    if ( rows.isEmpty() ) {
+                    if ( Result.isEmpty() ) {
                         return null;                             // empty query we return null
-                    } else if ( rows.size() == 1 && cols == 1 ) {
-                        return rows.get( 0 );              // single scalar or single String
-                    } else if ( cols == 1 ) {
-                        return rows.toArray( new String[0] );    // multiple JSON docs (i.e. a collection)
+                    } else if ( Result.size() == 1 && colCount == 1 ) {
+                        return Result.get( 0 );              // single scalar or single String
+                    } else if ( colCount == 1 ) {
+                        return Result.toArray( new String[0] );    // multiple JSON docs (i.e. a collection)
                     } else {
-                        return rows.toArray( new Object[0] );    // fallback
+                        return Result.toArray( new Object[0] );    // fallback
                     }
 
                 } catch ( Exception e ) {
@@ -158,18 +158,16 @@ public class QueryExecutor {
 
     /**
      * @Description
-     * - Casts the result of the queries to MatlabObjects, depending on
-     * the Database language (SQL, MongoQL, Cypher)
+     * - Casts the result of SQL queries to MatlabObjects
      * 
      * @param rs: The result object of the query of type ResultSet
      * 
-     * @return: Result from the query which is either null/scalar/table (SQL), TODO document (MongoQL, or (Cypher)
+     * @return: Result from the query which is either null/scalar/table
      **/
     public Object SQLResultToMatlab( ResultSet rs ) throws Exception {
 
         ResultSetMetaData meta = rs.getMetaData();
         int colCount = meta.getColumnCount();
-        Object Result;
         Object[][] ResultArray;
 
         // ─────────────────────────────
@@ -177,8 +175,7 @@ public class QueryExecutor {
         // ─────────────────────────────
         if ( !rs.next() ) {
             System.out.println( "Empty result set." );
-            Result = null;
-            return Result;
+            return null;
         }
 
         // ─────────────────────────────

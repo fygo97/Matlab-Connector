@@ -108,6 +108,15 @@ public class QueryExecutorTest {
 
 
     @Test
+    void testInsert() {
+        // Insert id = 1 and name = Alice into the table.
+        Object result = myexecutor.execute( "sql", "INSERT INTO unittest_namespace.unittest_table VALUES (1, 'Alice')" );
+        assertTrue( result instanceof Integer, "Expected an integer." );
+        assertEquals( result, 1, "result should equal 1." );
+    }
+
+
+    @Test
     void testInsertAndSelect() {
         // Insert id = 1 and name = Alice into the table.
         myexecutor.execute( "sql", "INSERT INTO unittest_namespace.unittest_table VALUES (1, 'Alice')" );

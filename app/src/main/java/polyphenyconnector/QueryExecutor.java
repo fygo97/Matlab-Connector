@@ -1,8 +1,11 @@
 package polyphenyconnector;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+
+import org.polypheny.jdbc.PolyConnection;
+import org.polypheny.jdbc.multimodel.*;
+import org.polypheny.jdbc.types.*;
 
 public class QueryExecutor {
 
@@ -34,9 +37,28 @@ public class QueryExecutor {
      * 
      * @return: ResultToMatlab(rs) which is a Matlab compatible object that is cast to the Matlab user.
      **/
+
+    /**
+     * @Description
+     * - Executes the query depending on the language given by the user
+     * 
+     * @param language: The database language that is used (e.g. SQL, MongoQL,Cypher)
+     * @param namespace: The namespace in the query string. For SQL this argument as no effect as we use JDBC's
+     * executeQuery(...)/executeUpdate(...). For MQL this argument will be passed to JDBC's execute(...) function. For further
+     * information consult Polpyheny's web documentation.
+     * @param query: The query-text to be executed (e.g. FROM emps SELECT *)
+     * 
+     * @return: ResultToMatlab(rs) which is a Matlab compatible object that is cast to the Matlab user.
+     **/
     public Object execute( String language, String namespace, String query ) {
-        checkNamespace( language, namespace );
         polyconnection.openIfNeeded();
+        try {
+            Connection conn = polyconnection.getConnection();
+            conn.setAutoCommit( true );
+        } catch ( SQLException e ) {
+            throw translateSQLException( e );
+        }
+
         switch ( language.toLowerCase() ) {
             default:
                 throw new UnsupportedOperationException( "Unsupported language: " + language );
@@ -65,39 +87,37 @@ public class QueryExecutor {
                     throw new RuntimeException( "SQL execution failed: " + e.getMessage(), e );
                 }
 
-            case "mongoql":
-                try ( Statement stmt = polyconnection.getConnection().createStatement(); ResultSet rs = stmt.executeQuery( query ) ) {
+            case "mongo":
+                try {
 
-                    List<Object> Result = new ArrayList<>();
-                    ResultSetMetaData meta = rs.getMetaData();
-                    int colCount = meta.getColumnCount();
+                    // Get the connection variable from the PolyphenyConnection.java class using the getter
+                    Connection connection = polyconnection.getConnection();
 
-                    while ( rs.next() ) {
-                        if ( colCount == 1 ) {
-                            Result.add( rs.getObject( 1 ) );
-                        } else {
-                            Object[] row = new Object[colCount];
-                            for ( int i = 0; i < colCount; i++ ) {
-                                row[i] = rs.getObject( i + 1 );
-                            }
-                            Result.add( row );
-                        }
+                    // Unwrap Connection connection to the JDBC Driver-supplied PolyConnection polyConnection
+                    PolyConnection polyConnection = connection.unwrap( PolyConnection.class );
+
+                    // Create a PolyStatement object to call .execute(...) method of the JDBC- Driver on
+                    PolyStatement polyStatement = polyConnection.createPolyStatement();
+
+                    // Call the execute(...) function on the polyStatement
+                    Result result = polyStatement.execute( namespace, language, query );
+
+                    switch ( result.getResultType() ) {
+                        case DOCUMENT:
+                            DocumentResult documentResult = result.unwrap( DocumentResult.class );
+                            //return DocumentToMatlab( documentResult );
+                        case SCALAR:
+                            ScalarResult scalarResult = result.unwrap( ScalarResult.class );
+                            return scalarResult.getScalar();
+
+                        default:
+                            throw new UnsupportedOperationException( "Unhandled result type: " + result.getResultType() );
                     }
-
-                    if ( Result.isEmpty() ) {
-                        return null;                             // empty query we return null
-                    } else if ( Result.size() == 1 && colCount == 1 ) {
-                        return Result.get( 0 );              // single scalar or single String
-                    } else if ( colCount == 1 ) {
-                        return Result.toArray( new String[0] );    // multiple JSON docs (i.e. a collection)
-                    } else {
-                        return Result.toArray( new Object[0] );    // fallback
-                    }
-
+                } catch ( SQLException e ) {
+                    throw translateSQLException( e );
                 } catch ( Exception e ) {
-                    throw new RuntimeException( "MongoQL execution failed: " + e.getMessage(), e );
+                    throw new RuntimeException( "Mongo execution failed: " + e.getMessage(), e );
                 }
-
             case "cypher":
                 throw new UnsupportedOperationException( "Cypher execution not yet implemented." );
         }
@@ -119,7 +139,6 @@ public class QueryExecutor {
      * n: n rows were updated, 0: no rows were touched.
      */
     public int[] executeBatch( String language, String namespace, List<String> query_list ) {
-        checkNamespace( language, namespace );
         polyconnection.openIfNeeded();
 
         switch ( language.toLowerCase() ) {
@@ -221,6 +240,18 @@ public class QueryExecutor {
         return new Object[]{ colNames, ResultArray };
     }
 
+    /* 
+    private String[] DocumentToMatlab( DocumentResult documentResult ) {
+        List<String> docs = new ArrayList<>();
+        Iterator<PolyDocument> documentIterator = documentResult.iterator(); // Call iterator for PolyDocumentResult
+        while ( documentIterator.hasNext() ) {
+            PolyDocument document = documentIterator.next();
+            docs.add( NestedPolyDocumentToString( document ) );
+        }
+        return docs.toArray( new String[0] );
+    }
+    */
+
 
     /**
      * @Description
@@ -228,7 +259,7 @@ public class QueryExecutor {
      * execute or executeBatch are translated in a user-interpretable error to be propagated to Matlab, instead of just failing
      * with an obscure error/exception.
      * 
-     * @param e The exception caught. 08 denotes an error with the Polypheny connetion, 42 denotes a
+     * @param e The exception caught. 08 denotes an error with the Polypheny connection, 42 denotes a
      * @return
      */
     private RuntimeException translateSQLException( SQLException e ) {
@@ -244,6 +275,38 @@ public class QueryExecutor {
         return new RuntimeException( "SQL execution failed: " + e.getMessage(), e );
     }
 
+    /* 
+    private String NestedPolyDocumentToString( PolyDocument doc ) {
+        StringBuilder stringbuilder = new StringBuilder();
+        stringbuilder.append( "{" );
+    
+        Iterator<Map.Entry<String, TypedValue>> it = doc.entrySet().iterator();
+        while ( it.hasNext() ) {
+            Map.Entry<String, TypedValue> entry = it.next();
+            String key = entry.getKey().toString();
+            TypedValue value = entry.getValue();
+    
+            stringbuilder.append( "\"" ).append( key ).append( "\":" );
+    
+            if ( value instanceof PolyDocument ) {
+                // recurse for nested docs
+                stringbuilder.append( NestedPolyDocumentToString( (PolyDocument) value ) );
+            } else if ( value != null ) {
+                stringbuilder.append( "\"" ).append( value.toString() ).append( "\"" );
+            } else {
+                stringbuilder.append( "null" );
+            }
+    
+            if ( it.hasNext() ) {
+                stringbuilder.append( "," );
+            }
+        }
+    
+        stringbuilder.append( "}" );
+        return stringbuilder.toString();
+    }
+    */
+
 
     private static void checkNamespace( String language, String namespace ) {
         if ( namespace == null || namespace.isEmpty() ) {
@@ -255,6 +318,31 @@ public class QueryExecutor {
                 );
             }
         }
+    }
+
+
+    /**
+     * @Description
+     * This function determines the operation (e.g. "find" or "insertOne") of a MongoQL query. This is important to distinguish
+     * whether to use executeUpdate or executeQuery. Functionality was moved to a function (instead of handling it like for SQL)
+     * because in MongoQL queries the operation isn't as easy to determine.
+     * MQL queries are always of the form <db>.<namespace>.<operation>()
+     * 
+     * @param q The query text of type String
+     * @return
+     */
+    private static String extractMongoOperation( String q ) {
+        String query = q.trim();
+        int paren = query.indexOf( '(' );                    // get the position of the first "(" in the query. 
+        if ( paren < 0 ) {
+            return "";                                          // return an empty String if no ( was found
+        }
+        int lastDot = query.lastIndexOf( '.', paren );       // get the position of the last "." before the "(".
+        if ( lastDot < 0 ) {
+            return "";                                          // return an empty string if no dot was found
+        }
+        String operation = query.substring( lastDot + 1, paren ).trim();
+        return operation;                                       // return the <operation>
     }
 
 }

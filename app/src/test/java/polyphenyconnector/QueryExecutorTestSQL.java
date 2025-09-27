@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.util.Arrays;
 import java.util.List;
 
-public class QueryExecutorTest {
+public class QueryExecutorTestSQL {
 
     private static PolyphenyConnection myconnection;
     private static QueryExecutor myexecutor;
@@ -90,7 +90,7 @@ public class QueryExecutorTest {
 
     @Test
     void testTableLiteral() {
-        Object result = myexecutor.execute( "sql", "", "SELECT 1 AS a, 2 AS b UNION ALL SELECT 3, 4" );
+        Object result = myexecutor.execute( "sql", "unittest_namespace", "SELECT 1 AS a, 2 AS b UNION ALL SELECT 3, 4" );
         assertTrue( result instanceof Object[], "Expected tabular result" );
 
         Object[] arr = (Object[]) result;

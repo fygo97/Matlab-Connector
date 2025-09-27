@@ -47,21 +47,21 @@ classdef PolyphenyWrapperTest < matlab.unittest.TestCase
 
         function testBatchInsert(testCase)
             % Prepare table
-            testCase.conn.query("sql" ,"DROP TABLE IF EXISTS batch_test");
-            testCase.conn.query("sql" ,"CREATE TABLE batch_test (id INTEGER PRIMARY KEY, name VARCHAR)");
+            testCase.conn.query("sql" , "" , "DROP TABLE IF EXISTS batch_test");
+            testCase.conn.query("sql" , "" , "CREATE TABLE batch_test (id INTEGER PRIMARY KEY, name VARCHAR)");
 
             % Batch insert 2 rows
             queries = { ...
                 "INSERT INTO batch_test VALUES (1,'Alice')", ...
                 "INSERT INTO batch_test VALUES (2,'Bob')" ...
             };
-            result = testCase.conn.queryBatch("sql" ,queries);
+            result = testCase.conn.queryBatch("sql" , "" , queries);
 
             % Verify JDBC return codes
             testCase.verifyEqual(result, [1 1]);
 
             % Verify table contents
-            T = testCase.conn.query("sql" ,"SELECT id, name FROM batch_test ORDER BY id");
+            T = testCase.conn.query("sql" , "" ,"SELECT id, name FROM batch_test ORDER BY id");
             testCase.verifyEqual(T.id, [1; 2]);
             testCase.verifyEqual(string(T.name), ["Alice"; "Bob"]);
         end

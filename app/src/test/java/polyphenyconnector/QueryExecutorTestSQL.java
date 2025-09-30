@@ -1,10 +1,16 @@
 package polyphenyconnector;
 
 import org.junit.jupiter.api.*;
+import org.polypheny.jdbc.PolyConnection;
+import org.polypheny.jdbc.multimodel.*;
+import org.polypheny.jdbc.types.TypedValue;
+
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.sql.Connection;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Iterator;
 
 public class QueryExecutorTestSQL {
 
@@ -314,6 +320,46 @@ public class QueryExecutorTestSQL {
 
         Object result = myexecutor.execute( "sql", "unittest_namespace", "SELECT * FROM unittest_namespace.batch_table" );
         assertNull( result, "Batch should have rolled back and left the table empty" );
+    }
+
+
+    @Test
+    // This test asserts that the column names aren't stored in the first row of the table for relational results.
+    // Thought that this might maybe be how it's implemented for relational results in execute(...)
+    void testRelationalResultFirstRowDirectly() throws Exception {
+        // Insert a row we can recognize
+        myexecutor.execute(
+                "sql",
+                "unittest_namespace",
+                "INSERT INTO unittest_namespace.unittest_table (id, name) VALUES (1, 'Alice')"
+        );
+
+        // Unwrap to PolyConnection and PolyStatement
+        Connection jdbcConn = myconnection.getConnection();
+        PolyConnection polyConn = jdbcConn.unwrap( PolyConnection.class );
+        PolyStatement polyStmt = polyConn.createPolyStatement();
+
+        // Run query directly through multimodel API
+        Result result = polyStmt.execute(
+                "unittest_namespace",
+                "sql",
+                "SELECT * FROM unittest_namespace.unittest_table"
+        );
+
+        assertEquals( Result.ResultType.RELATIONAL, result.getResultType() );
+
+        RelationalResult rr = result.unwrap( RelationalResult.class );
+        Iterator<PolyRow> it = rr.iterator();
+        assertTrue( it.hasNext(), "Expected at least one row" );
+
+        PolyRow firstRow = it.next();
+        assertEquals( 2, firstRow.getColumnCount(), "Expected 2 columns (id, name)" );
+
+        TypedValue idVal = firstRow.getValue( 0 );
+        TypedValue nameVal = firstRow.getValue( 1 );
+
+        assertEquals( 1, idVal.asInt() );
+        assertEquals( "Alice", nameVal.asString() );
     }
 
 }

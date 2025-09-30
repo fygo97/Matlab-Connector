@@ -8,19 +8,20 @@ application { mainClass = 'QuickTest' } // currently running QuickTest.java as a
 repositories { mavenCentral() }
 
 dependencies {
-  // SLF4J implementation to silence warnings (bundled into the shaded JAR)
-  implementation 'org.slf4j:slf4j-simple:2.0.16'
+    // SLF4J implementation to silence warnings
+    implementation 'org.slf4j:slf4j-simple:2.0.16'
 
-  // JDBC driver: keep separate in toolbox/libs/, not bundled into the shaded JAR
-  compileOnly files(rootProject.file('libs/polypheny-jdbc-driver-2.3.jar'))
-  runtimeOnly  files(rootProject.file('libs/polypheny-jdbc-driver-2.3.jar'))
-  
-  // Multimodel extension (make sure file exists at repo-root libs/)
-  runtimeOnly     files( rootProject.file('libs/polypheny-jdbc-multimodel-2.3.jar') )
-  testRuntimeOnly files( rootProject.file('libs/polypheny-jdbc-multimodel-2.3.jar') )
-    
-  // JUnit 5
-  testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+    // Polypheny JDBC driver
+    implementation files(rootProject.file('libs/polypheny-jdbc-driver-2.3.jar'))
+    testImplementation files(rootProject.file('libs/polypheny-jdbc-driver-2.3.jar'))
+
+    // Multimodel extension JAR (if you really need it)
+    runtimeOnly     files(rootProject.file('libs/polypheny-jdbc-multimodel-2.3.jar'))
+    testRuntimeOnly files(rootProject.file('libs/polypheny-jdbc-multimodel-2.3.jar'))
+
+    // JUnit 5 API + engine
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
+    testRuntimeOnly   'org.junit.jupiter:junit-jupiter-engine:5.10.2'
 }
 
 shadowJar {

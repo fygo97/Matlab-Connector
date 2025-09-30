@@ -1,5 +1,6 @@
 package polyphenyconnector;
 
+import java.math.BigDecimal;
 import java.sql.*;
 import java.util.*;
 
@@ -105,7 +106,7 @@ public class QueryExecutor {
                     switch ( result.getResultType() ) {
                         case DOCUMENT:
                             DocumentResult documentResult = result.unwrap( DocumentResult.class );
-                            //return DocumentToMatlab( documentResult );
+                            return DocumentToMatlab( documentResult );
                         case SCALAR:
                             ScalarResult scalarResult = result.unwrap( ScalarResult.class );
                             return scalarResult.getScalar();
@@ -171,7 +172,7 @@ public class QueryExecutor {
                     throw new RuntimeException( "Failed to manage transaction", e );
                 }
 
-            case "mongoql":
+            case "mongo":
                 throw new UnsupportedOperationException( "MongoQL batch execution not yet implemented." );
 
             case "cypher":
@@ -240,7 +241,7 @@ public class QueryExecutor {
         return new Object[]{ colNames, ResultArray };
     }
 
-    /* 
+
     private String[] DocumentToMatlab( DocumentResult documentResult ) {
         List<String> docs = new ArrayList<>();
         Iterator<PolyDocument> documentIterator = documentResult.iterator(); // Call iterator for PolyDocumentResult
@@ -250,7 +251,149 @@ public class QueryExecutor {
         }
         return docs.toArray( new String[0] );
     }
-    */
+
+
+    private String NestedPolyDocumentToString( PolyDocument document ) {
+        StringBuilder stringbuilder = new StringBuilder();
+        stringbuilder.append( "{" );
+
+        Iterator<Map.Entry<String, TypedValue>> iterator = document.entrySet().iterator();
+        while ( iterator.hasNext() ) {
+            Map.Entry<String, TypedValue> entry = iterator.next();
+            String key = entry.getKey().toString();
+            TypedValue value = entry.getValue();
+
+            stringbuilder.append( "\"" ).append( key ).append( "\":" );
+
+            try {
+                switch ( value.getValueCase() ) {
+                    case DOCUMENT:
+                        stringbuilder.append( NestedPolyDocumentToString( value.asDocument() ) );
+                        break;
+                    case LIST:
+                        stringbuilder.append( NestedListToString( value.asArray() ) );
+                        break;
+                    case BOOLEAN:
+                        stringbuilder.append( value.asBoolean() );
+                        break;
+                    case INTEGER:
+                        stringbuilder.append( value.asInt() );
+                        break;
+                    case LONG:
+                        stringbuilder.append( value.asLong() );
+                        break;
+                    case DOUBLE:
+                        stringbuilder.append( value.asDouble() );
+                        break;
+                    case FLOAT:
+                        stringbuilder.append( value.asFloat() );
+                        break;
+                    case BIG_DECIMAL:
+                        stringbuilder.append( value.asBigDecimal().toPlainString() ); // toPlainString() turns 1E-7 into 0.0000001
+                        break;
+                    case STRING:
+                        stringbuilder.append( "\"" ).append( escapeJson( value.asString() ) ).append( "\"" );
+                        break;
+                    case DATE:
+                        stringbuilder.append( "\"" ).append( value.asDate().toString() ).append( "\"" );
+                        break;
+                    case TIME:
+                        stringbuilder.append( "\"" ).append( value.asTime().toString() ).append( "\"" );
+                        break;
+                    case TIMESTAMP:
+                        stringbuilder.append( "\"" ).append( value.asTimestamp().toString() ).append( "\"" );
+                        break;
+                    case INTERVAL:
+                        stringbuilder.append( "\"" ).append( value.asInterval().toString() ).append( "\"" );
+                        break;
+                    case BINARY:
+                        stringbuilder.append( "\"" ).append( Base64.getEncoder().encodeToString( value.asBytes() ) ).append( "\"" );
+                        break;
+                    case FILE:
+                        stringbuilder.append( "\"" ).append( escapeJson( String.valueOf( value.asBlob() ) ) ).append( "\"" );
+                        break;
+                    case NULL:
+                        stringbuilder.append( "null" );
+                        break;
+                    default:
+                        stringbuilder.append( "\"" ).append( escapeJson( value.toString() ) ).append( "\"" );
+                }
+            } catch ( SQLException e ) {
+                throw new RuntimeException( "TypedValue error: " + e.getMessage(), e );
+            }
+
+            if ( iterator.hasNext() ) {
+                stringbuilder.append( "," );
+            }
+        }
+
+        stringbuilder.append( "}" );
+        return stringbuilder.toString();
+    }
+
+
+    private String NestedListToString( Array array ) {
+        StringBuilder sb = new StringBuilder();
+        sb.append( "[" );
+
+        try {
+            Object[] elems = (Object[]) array.getArray();
+            for ( int i = 0; i < elems.length; i++ ) {
+                Object e = elems[i];
+
+                if ( e instanceof PolyDocument ) {
+                    sb.append( NestedPolyDocumentToString( (PolyDocument) e ) );
+                } else if ( e instanceof Array ) {
+                    sb.append( NestedListToString( (Array) e ) );
+                } else if ( e instanceof Boolean ) {
+                    sb.append( (Boolean) e );
+                } else if ( e instanceof Integer ) {
+                    sb.append( (Integer) e );
+                } else if ( e instanceof Long ) {
+                    sb.append( (Long) e );
+                } else if ( e instanceof Double ) {
+                    sb.append( (Double) e );
+                } else if ( e instanceof Float ) {
+                    sb.append( (Float) e );
+                } else if ( e instanceof BigDecimal ) {
+                    sb.append( ((BigDecimal) e).toPlainString() );
+                } else if ( e instanceof String ) {
+                    sb.append( "\"" ).append( escapeJson( (String) e ) ).append( "\"" );
+                } else if ( e instanceof java.sql.Date
+                        || e instanceof java.sql.Time
+                        || e instanceof java.sql.Timestamp ) {
+                    sb.append( "\"" ).append( e.toString() ).append( "\"" );
+                } else if ( e instanceof byte[] ) {
+                    sb.append( "\"" ).append( Base64.getEncoder().encodeToString( (byte[]) e ) ).append( "\"" );
+                } else if ( e == null ) {
+                    sb.append( "null" );
+                } else {
+                    sb.append( "\"" ).append( escapeJson( e.toString() ) ).append( "\"" );
+                }
+
+                if ( i < elems.length - 1 ) {
+                    sb.append( "," );
+                }
+            }
+        } catch ( SQLException ex ) {
+            throw new RuntimeException( "List serialization error: " + ex.getMessage(), ex );
+        }
+
+        sb.append( "]" );
+        return sb.toString();
+    }
+
+
+    /**
+     * @Description
+     * This function takes makes sure that the escapes of queries are handled correctly in Strings when appending.
+     * e.g. " C\mypath " must be converted into " C\\mypath " because "\" is an operator sign like in Latex
+     * @param string
+     * @return string: The string with the proper escape sequences
+     */
+    private static String escapeJson( String string ) {
+        return string.replace( "\\", "\\\\" ).replace( "\"", "\\\"" );
+    }
 
 
     /**
@@ -274,38 +417,6 @@ public class QueryExecutor {
         }
         return new RuntimeException( "SQL execution failed: " + e.getMessage(), e );
     }
-
-    /* 
-    private String NestedPolyDocumentToString( PolyDocument doc ) {
-        StringBuilder stringbuilder = new StringBuilder();
-        stringbuilder.append( "{" );
-    
-        Iterator<Map.Entry<String, TypedValue>> it = doc.entrySet().iterator();
-        while ( it.hasNext() ) {
-            Map.Entry<String, TypedValue> entry = it.next();
-            String key = entry.getKey().toString();
-            TypedValue value = entry.getValue();
-    
-            stringbuilder.append( "\"" ).append( key ).append( "\":" );
-    
-            if ( value instanceof PolyDocument ) {
-                // recurse for nested docs
-                stringbuilder.append( NestedPolyDocumentToString( (PolyDocument) value ) );
-            } else if ( value != null ) {
-                stringbuilder.append( "\"" ).append( value.toString() ).append( "\"" );
-            } else {
-                stringbuilder.append( "null" );
-            }
-    
-            if ( it.hasNext() ) {
-                stringbuilder.append( "," );
-            }
-        }
-    
-        stringbuilder.append( "}" );
-        return stringbuilder.toString();
-    }
-    */
 
 
     private static void checkNamespace( String language, String namespace ) {

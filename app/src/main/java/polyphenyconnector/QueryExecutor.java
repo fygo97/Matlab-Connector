@@ -1,6 +1,5 @@
 package polyphenyconnector;
 
-import java.math.BigDecimal;
 import java.sql.*;
 import java.util.*;
 
@@ -104,12 +103,16 @@ public class QueryExecutor {
                     Result result = polyStatement.execute( namespace, language, query );
 
                     switch ( result.getResultType() ) {
+
                         case DOCUMENT:
+                            // Always returns a List
                             DocumentResult documentResult = result.unwrap( DocumentResult.class );
                             return DocumentToMatlab( documentResult );
+
                         case SCALAR:
                             ScalarResult scalarResult = result.unwrap( ScalarResult.class );
-                            return scalarResult.getScalar();
+                            long scalar = scalarResult.getScalar();
+                            return scalar;
 
                         default:
                             throw new UnsupportedOperationException( "Unhandled result type: " + result.getResultType() );
@@ -126,59 +129,77 @@ public class QueryExecutor {
     }
 
 
+    // SQL convenience overload
+    public Object execute( String query ) {
+        return execute( "sql", "public", query );
+    }
+
+
     /**
      * @Description
-     * This function is capable of executing a List of non-SELECT SQL statements in one single Matlab-Java crossing. All SQL statements
-     * except SELECT are supported. For further information consult the Polyphenys JDBC Driver documentation.
+     * This function is capable of executing a List of non-SELECT SQL statements in one single Matlab-Java crossing.
+     * All SQL statements except SELECT are supported. For further information consult the Polypheny JDBC Driver documentation.
      * 
-     * @param language The database language that is used (e.g. SQL, MongoQL,Cypher)
-     * @param namespace: The namespace in the query string. For SQL this argument as no effect as we use JDBC's
-     * executeQuery(...)/executeUpdate(...). For MQL this argument will be passed to JDBC's execute(...) function. For further
-     * information consult Polpyheny's web documentation.
-     * @param query_list The list of query strings to be executed.
-     * @return int[] result An array of integers, where the i-th entry will denote for the i-th query how many rows were touched, e.g.
+     * @param queries The list of SQL query strings to be executed.
+     * @return List<Integer> result A list of integers, where the i-th entry will denote for the i-th query how many rows were touched, e.g.
      * n: n rows were updated, 0: no rows were touched.
      */
-    public int[] executeBatch( String language, String namespace, List<String> query_list ) {
+    public List<Integer> executeBatchSql( List<String> queries ) {
         polyconnection.openIfNeeded();
-
-        switch ( language.toLowerCase() ) {
-            default:
-                throw new UnsupportedOperationException( "Unsupported language: " + language );
-
-            case "sql":
-                try {
-                    polyconnection.beginTransaction();
-                    try ( Statement stmt = polyconnection.getConnection().createStatement() ) {
-                        for ( String query : query_list ) {
-                            String first = query.trim().toUpperCase();
-                            if ( first.startsWith( "SELECT" ) ) {
-                                throw new UnsupportedOperationException( "Batch execution does not support SELECT statements." );
-                            }
-                            stmt.addBatch( query );
-                        }
-                        int[] result = stmt.executeBatch();
-                        polyconnection.commitTransaction();
-                        return result;
-
-                    } catch ( SQLException e ) {
-                        throw translateSQLException( e );
-                    } catch ( Exception e ) {
-                        polyconnection.rollbackTransaction();
-                        throw new RuntimeException( "SQL batch execution failed. Transaction was rolled back: " + e.getMessage(), e );
+        try {
+            polyconnection.beginTransaction();
+            try ( Statement stmt = polyconnection.getConnection().createStatement() ) {
+                for ( String query : queries ) {
+                    String first = query.trim().toUpperCase();
+                    if ( first.startsWith( "SELECT" ) ) {
+                        throw new UnsupportedOperationException( "Batch execution does not support SELECT statements." );
                     }
-
-                } catch ( SQLException e ) {
-                    throw new RuntimeException( "Failed to manage transaction", e );
+                    stmt.addBatch( query );
                 }
+                int[] resultArray = stmt.executeBatch();
+                polyconnection.commitTransaction();
 
-            case "mongo":
-                throw new UnsupportedOperationException( "MongoQL batch execution not yet implemented." );
+                List<Integer> result = new ArrayList<>( resultArray.length );
+                for ( int r : resultArray ) {
+                    result.add( r );
+                }
+                return result;
 
-            case "cypher":
-                throw new UnsupportedOperationException( "Cypher batch execution not yet implemented." );
+            } catch ( SQLException e ) {
+                polyconnection.rollbackTransaction();
+                throw translateSQLException( e );
+            } catch ( Exception e ) {
+                polyconnection.rollbackTransaction();
+                throw new RuntimeException(
+                        "SQL batch execution failed. Transaction was rolled back: " + e.getMessage(), e
+                );
+            }
+        } catch ( SQLException e ) {
+            throw new RuntimeException( "Failed to manage transaction", e );
         }
+    }
 
+
+    /**
+     * @Description
+     * This function is capable of executing a List of MongoQL statements in one single Matlab-Java crossing.
+     * Each query is executed individually via the execute(...) method. The result of each query will be a List<String>
+     * containing the JSON-encoded documents or scalars (as JSON strings). All individual query results are then grouped
+     * into an outer List, which represents the batch result.
+     * 
+     * @param namespace The Mongo namespace (e.g. database / collection context).
+     * @param queries The list of Mongo query strings to be executed.
+     * @return List<List<String>> result An outer list with one entry per query. Each entry is a List<String> containing
+     * the documents or scalar results (as JSON strings) returned by the respective query.
+     */
+    public List<List<String>> executeBatchMongo( String namespace, List<String> queries ) {
+        polyconnection.openIfNeeded();
+        List<List<String>> results = new ArrayList<>();
+        for ( String query : queries ) {
+            @SuppressWarnings("unchecked") List<String> res = (List<String>) execute( "mongo", namespace, query );
+            results.add( res );
+        }
+        return results;
     }
 
 
@@ -242,145 +263,113 @@ public class QueryExecutor {
     }
 
 
-    private String[] DocumentToMatlab( DocumentResult documentResult ) {
+    private List<String> DocumentToMatlab( DocumentResult documentResult ) {
         List<String> docs = new ArrayList<>();
-        Iterator<PolyDocument> documentIterator = documentResult.iterator(); // Call iterator for PolyDocumentResult
+        Iterator<PolyDocument> documentIterator = documentResult.iterator();
         while ( documentIterator.hasNext() ) {
             PolyDocument document = documentIterator.next();
             docs.add( NestedPolyDocumentToString( document ) );
         }
-        return docs.toArray( new String[0] );
+        return docs;
     }
 
 
     private String NestedPolyDocumentToString( PolyDocument document ) {
-        StringBuilder stringbuilder = new StringBuilder();
-        stringbuilder.append( "{" );
-
-        Iterator<Map.Entry<String, TypedValue>> iterator = document.entrySet().iterator();
-        while ( iterator.hasNext() ) {
-            Map.Entry<String, TypedValue> entry = iterator.next();
-            String key = entry.getKey().toString();
-            TypedValue value = entry.getValue();
-
-            stringbuilder.append( "\"" ).append( key ).append( "\":" );
-
-            try {
-                switch ( value.getValueCase() ) {
-                    case DOCUMENT:
-                        stringbuilder.append( NestedPolyDocumentToString( value.asDocument() ) );
-                        break;
-                    case LIST:
-                        stringbuilder.append( NestedListToString( value.asArray() ) );
-                        break;
-                    case BOOLEAN:
-                        stringbuilder.append( value.asBoolean() );
-                        break;
-                    case INTEGER:
-                        stringbuilder.append( value.asInt() );
-                        break;
-                    case LONG:
-                        stringbuilder.append( value.asLong() );
-                        break;
-                    case DOUBLE:
-                        stringbuilder.append( value.asDouble() );
-                        break;
-                    case FLOAT:
-                        stringbuilder.append( value.asFloat() );
-                        break;
-                    case BIG_DECIMAL:
-                        stringbuilder.append( value.asBigDecimal().toPlainString() ); // toPlainString() turns 1E-7 into 0.0000001
-                        break;
-                    case STRING:
-                        stringbuilder.append( "\"" ).append( escapeJson( value.asString() ) ).append( "\"" );
-                        break;
-                    case DATE:
-                        stringbuilder.append( "\"" ).append( value.asDate().toString() ).append( "\"" );
-                        break;
-                    case TIME:
-                        stringbuilder.append( "\"" ).append( value.asTime().toString() ).append( "\"" );
-                        break;
-                    case TIMESTAMP:
-                        stringbuilder.append( "\"" ).append( value.asTimestamp().toString() ).append( "\"" );
-                        break;
-                    case INTERVAL:
-                        stringbuilder.append( "\"" ).append( value.asInterval().toString() ).append( "\"" );
-                        break;
-                    case BINARY:
-                        stringbuilder.append( "\"" ).append( Base64.getEncoder().encodeToString( value.asBytes() ) ).append( "\"" );
-                        break;
-                    case FILE:
-                        stringbuilder.append( "\"" ).append( escapeJson( String.valueOf( value.asBlob() ) ) ).append( "\"" );
-                        break;
-                    case NULL:
-                        stringbuilder.append( "null" );
-                        break;
-                    default:
-                        stringbuilder.append( "\"" ).append( escapeJson( value.toString() ) ).append( "\"" );
-                }
-            } catch ( SQLException e ) {
-                throw new RuntimeException( "TypedValue error: " + e.getMessage(), e );
-            }
-
-            if ( iterator.hasNext() ) {
-                stringbuilder.append( "," );
-            }
+        StringBuilder sb = new StringBuilder();
+        sb.append( "{" );
+        Iterator<Map.Entry<String, TypedValue>> it = document.entrySet().iterator();
+        while ( it.hasNext() ) {
+            Map.Entry<String, TypedValue> entry = it.next();
+            sb.append( "\"" ).append( entry.getKey() ).append( "\":" );
+            sb.append( anyToJson( entry.getValue() ) );
+            if ( it.hasNext() )
+                sb.append( "," );
         }
-
-        stringbuilder.append( "}" );
-        return stringbuilder.toString();
+        sb.append( "}" );
+        return sb.toString();
     }
 
 
     private String NestedListToString( Array array ) {
         StringBuilder sb = new StringBuilder();
         sb.append( "[" );
-
         try {
             Object[] elems = (Object[]) array.getArray();
             for ( int i = 0; i < elems.length; i++ ) {
-                Object e = elems[i];
-
-                if ( e instanceof PolyDocument ) {
-                    sb.append( NestedPolyDocumentToString( (PolyDocument) e ) );
-                } else if ( e instanceof Array ) {
-                    sb.append( NestedListToString( (Array) e ) );
-                } else if ( e instanceof Boolean ) {
-                    sb.append( (Boolean) e );
-                } else if ( e instanceof Integer ) {
-                    sb.append( (Integer) e );
-                } else if ( e instanceof Long ) {
-                    sb.append( (Long) e );
-                } else if ( e instanceof Double ) {
-                    sb.append( (Double) e );
-                } else if ( e instanceof Float ) {
-                    sb.append( (Float) e );
-                } else if ( e instanceof BigDecimal ) {
-                    sb.append( ((BigDecimal) e).toPlainString() );
-                } else if ( e instanceof String ) {
-                    sb.append( "\"" ).append( escapeJson( (String) e ) ).append( "\"" );
-                } else if ( e instanceof java.sql.Date
-                        || e instanceof java.sql.Time
-                        || e instanceof java.sql.Timestamp ) {
-                    sb.append( "\"" ).append( e.toString() ).append( "\"" );
-                } else if ( e instanceof byte[] ) {
-                    sb.append( "\"" ).append( Base64.getEncoder().encodeToString( (byte[]) e ) ).append( "\"" );
-                } else if ( e == null ) {
-                    sb.append( "null" );
-                } else {
-                    sb.append( "\"" ).append( escapeJson( e.toString() ) ).append( "\"" );
-                }
-
-                if ( i < elems.length - 1 ) {
+                sb.append( anyToJson( elems[i] ) );
+                if ( i < elems.length - 1 )
                     sb.append( "," );
-                }
             }
         } catch ( SQLException ex ) {
             throw new RuntimeException( "List serialization error: " + ex.getMessage(), ex );
         }
-
         sb.append( "]" );
         return sb.toString();
+    }
+
+
+    private String anyToJson( Object result ) {
+        if ( result == null ) {
+            return "null";
+        }
+        try {
+            if ( result instanceof TypedValue ) {
+                TypedValue value = (TypedValue) result;
+                switch ( value.getValueCase() ) {
+                    case DOCUMENT:
+                        return NestedPolyDocumentToString( value.asDocument() );
+                    case LIST:
+                        return NestedListToString( value.asArray() );
+                    case BOOLEAN:
+                        return String.valueOf( value.asBoolean() );
+                    case INTEGER:
+                        return String.valueOf( value.asInt() );
+                    case LONG:
+                        return String.valueOf( value.asLong() );
+                    case DOUBLE:
+                        return String.valueOf( value.asDouble() );
+                    case FLOAT:
+                        return String.valueOf( value.asFloat() );
+                    case BIG_DECIMAL:
+                        return value.asBigDecimal().toPlainString();
+                    case STRING:
+                        return "\"" + escapeJson( value.asString() ) + "\"";
+                    case DATE:
+                        return "\"" + value.asDate().toString() + "\"";
+                    case TIME:
+                        return "\"" + value.asTime().toString() + "\"";
+                    case TIMESTAMP:
+                        return "\"" + value.asTimestamp().toString() + "\"";
+                    case INTERVAL:
+                        return "\"" + value.asInterval().toString() + "\"";
+                    case BINARY:
+                        return "\"" + Base64.getEncoder().encodeToString( value.asBytes() ) + "\"";
+                    case FILE:
+                        return "\"" + escapeJson( String.valueOf( value.asBlob() ) ) + "\"";
+                    case NULL:
+                        return "null";
+                    default:
+                        return "\"" + escapeJson( value.toString() ) + "\"";
+                }
+            } else if ( result instanceof PolyDocument ) {
+                return NestedPolyDocumentToString( (PolyDocument) result );
+            } else if ( result instanceof Array ) {
+                return NestedListToString( (Array) result );
+            } else if ( result instanceof String ) {
+                return "\"" + escapeJson( (String) result ) + "\"";
+            } else if ( result instanceof java.sql.Date
+                    || result instanceof java.sql.Time
+                    || result instanceof java.sql.Timestamp ) {
+                return "\"" + result.toString() + "\"";
+            } else if ( result instanceof byte[] ) {
+                return "\"" + Base64.getEncoder().encodeToString( (byte[]) result ) + "\"";
+            } else {
+                // numbers, booleans, anything else
+                return String.valueOf( result );
+            }
+        } catch ( SQLException e ) {
+            throw new RuntimeException( "Serialization error: " + e.getMessage(), e );
+        }
     }
 
 
@@ -415,7 +404,7 @@ public class QueryExecutor {
                 return new RuntimeException( "Syntax error in query: " + e.getMessage(), e );
             }
         }
-        return new RuntimeException( "SQL execution failed: " + e.getMessage(), e );
+        return new RuntimeException( "Query execution failed: " + e.getMessage(), e );
     }
 
 

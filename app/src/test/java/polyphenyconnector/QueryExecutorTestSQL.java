@@ -244,13 +244,13 @@ public class QueryExecutorTestSQL {
         );
 
         // Do the batch execution using executeBatch(...)
-        int[] counts = myexecutor.executeBatch( "sql", "unittest_namespace", queries );
+        List<Integer> counts = myexecutor.executeBatchSql( queries );
 
         // Test that the lenghth of the counts vector is 13 (for 13 queries in the queries liest).
-        assertEquals( 13, counts.length, "Batch should return 13 results" );
+        assertEquals( 13, counts.size(), "Batch should return 13 results" );
 
         // Test the i-th entry in the counts vector is actually 1 (because the i-th query changed exactly 1 row)
-        for ( int c : counts ) {
+        for ( Object c : counts ) {
             assertEquals( 1, c, "Each INSERT should affect exactly 1 row" );
         }
 
@@ -275,7 +275,7 @@ public class QueryExecutorTestSQL {
 
         // Run the ill posed batch query and test an exception is thrown.
         assertThrows( RuntimeException.class, () -> {
-            myexecutor.executeBatch( "sql", "unittest_namespace", queries );
+            myexecutor.executeBatchSql( queries );
         } );
 
         // Query the whole table to make sure it is really empty.
@@ -315,7 +315,7 @@ public class QueryExecutorTestSQL {
         );
 
         assertThrows( RuntimeException.class, () -> {
-            myexecutor.executeBatch( "sql", "unittest_namespace", queries );
+            myexecutor.executeBatchSql( queries );
         } );
 
         Object result = myexecutor.execute( "sql", "unittest_namespace", "SELECT * FROM unittest_namespace.batch_table" );

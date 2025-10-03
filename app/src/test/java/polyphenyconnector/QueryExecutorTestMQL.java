@@ -54,6 +54,7 @@ public class QueryExecutorTestMQL {
     }
 
 
+    @SuppressWarnings("unchecked")
     @Test
     void testInsertandDrop() {
         Object result = myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.find({})" );
@@ -63,6 +64,7 @@ public class QueryExecutorTestMQL {
 
         myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.insertOne({\"age\":14})" );
         result = myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.find({\"age\":14})" );
+
         docs = (List<String>) result;
         assertEquals( 1, docs.size() );
         assertTrue( docs.get( 0 ).contains( "\"age\":14" ) );
@@ -83,7 +85,7 @@ public class QueryExecutorTestMQL {
         Object result = myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.find({\"age\": {$gt:29}})" );
 
         assertTrue( result instanceof List, "expected a List<String> for DocumentResult" );
-        List<String> docs = (List<String>) result;
+        @SuppressWarnings("unchecked") List<String> docs = (List<String>) result;
         assertEquals( 1, docs.size() );
         assertTrue( docs.get( 0 ).contains( "\"age\":30" ) );
     }
@@ -92,7 +94,7 @@ public class QueryExecutorTestMQL {
     @Test
     void testBooleanField() {
         myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.insertOne({\"flag\":true})" );
-        List<String> docs = (List<String>) myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.find({})" );
+        @SuppressWarnings("unchecked") List<String> docs = (List<String>) myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.find({})" );
         assertTrue( docs.get( 0 ).contains( "\"flag\":true" ) );
     }
 
@@ -100,7 +102,7 @@ public class QueryExecutorTestMQL {
     @Test
     void testIntegerAgeField() {
         myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.insertOne({\"age\":42})" );
-        List<String> docs = (List<String>) myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.find({})" );
+        @SuppressWarnings("unchecked") List<String> docs = (List<String>) myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.find({})" );
         assertEquals( 1, docs.size() );
         assertTrue( docs.get( 0 ).contains( "\"age\":42" ) );
     }
@@ -109,7 +111,7 @@ public class QueryExecutorTestMQL {
     @Test
     void testStringField() {
         myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.insertOne({\"name\":\"Alice\"})" );
-        List<String> docs = (List<String>) myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.find({})" );
+        @SuppressWarnings("unchecked") List<String> docs = (List<String>) myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.find({})" );
         assertEquals( 1, docs.size() );
         assertTrue( docs.get( 0 ).contains( "\"name\":\"Alice\"" ) );
     }
@@ -119,7 +121,7 @@ public class QueryExecutorTestMQL {
     void testLongField() {
         myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.insertOne({\"big\":1111111111111111111})" );
         Object r = myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.find({})" );
-        List<String> docs = (List<String>) r;
+        @SuppressWarnings("unchecked") List<String> docs = (List<String>) r;
         assertEquals( 1, docs.size() );
         assertTrue( docs.get( 0 ).contains( "\"big\":1111111111111111111" ) );
     }
@@ -129,7 +131,7 @@ public class QueryExecutorTestMQL {
     void testDoubleField() {
         myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.insertOne({\"pi\":3.14159})" );
         Object r = myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.find({})" );
-        List<String> docs = (List<String>) r;
+        @SuppressWarnings("unchecked") List<String> docs = (List<String>) r;
         assertEquals( 1, docs.size() );
         assertTrue( docs.get( 0 ).contains( "\"pi\":3.14159" ) );
     }
@@ -144,7 +146,7 @@ public class QueryExecutorTestMQL {
                 "db.unittest_collection.countDocuments({})" );
 
         assertTrue( result instanceof List, "result should be a List<String>" );
-        List<String> docs = (List<String>) result;
+        @SuppressWarnings("unchecked") List<String> docs = (List<String>) result;
         assertEquals( 1, docs.size() );
         assertEquals( "{\"count\":1}", docs.get( 0 ) );
     }
@@ -154,7 +156,7 @@ public class QueryExecutorTestMQL {
     void testListElementClasses() {
         myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.insertOne({\"mixed\":[{\"bar\":2},1,\"foo\"]})" );
         Object result = myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.find({})" );
-        List<String> docs = (List<String>) result;
+        @SuppressWarnings("unchecked") List<String> docs = (List<String>) result;
         System.out.println( docs.get( 0 ) );
     }
 
@@ -163,12 +165,13 @@ public class QueryExecutorTestMQL {
     void testArrayField() {
         myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.insertOne({\"scores\":[1,2,3]})" );
         Object result = myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.find({})" );
-        List<String> docs = (List<String>) result;
+        @SuppressWarnings("unchecked") List<String> docs = (List<String>) result;
         assertEquals( 1, docs.size() );
         assertTrue( docs.get( 0 ).contains( "\"scores\":[1,2,3]" ) );
     }
 
 
+    @SuppressWarnings("unchecked")
     @Test
     void testFindOnEmptyCollectionReturnsEmptyArray() {
         Object result = myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.find({})" );
@@ -185,11 +188,11 @@ public class QueryExecutorTestMQL {
         myexecutor.execute( "mongo", "mongotest",
                 "db.unittest_collection.insertOne({\"id\":11,\"name\":\"B\"})" );
 
-        Object out = myexecutor.execute( "mongo", "mongotest",
+        Object result = myexecutor.execute( "mongo", "mongotest",
                 "db.unittest_collection.find({})" );
 
-        assertTrue( out instanceof List );
-        List<String> docs = (List<String>) out;
+        assertTrue( result instanceof List );
+        @SuppressWarnings("unchecked") List<String> docs = (List<String>) result;
         assertEquals( 2, docs.size() );
     }
 
@@ -200,10 +203,10 @@ public class QueryExecutorTestMQL {
         queries.add( "db.unittest_collection.insertOne({\"name\":\"Alice\",\"age\":25})" );
         queries.add( "db.unittest_collection.insertOne({\"name\":\"Bob\",\"age\":30})" );
 
-        Object out = myexecutor.executeBatchMongo( "mongotest", queries );
+        Object result = myexecutor.executeBatchMongo( "mongotest", queries );
 
-        assertTrue( out instanceof List, "Expected a List of results" );
-        @SuppressWarnings("unchecked") List<List<String>> results = (List<List<String>>) out;
+        assertTrue( result instanceof List, "Expected a List of results" );
+        @SuppressWarnings("unchecked") List<List<String>> results = (List<List<String>>) result;
 
         assertEquals( 2, results.size(), "Expected two results (one per insert)" );
         assertTrue( results.get( 0 ) instanceof List, "First insert result should be a List<String>" );
@@ -219,21 +222,52 @@ public class QueryExecutorTestMQL {
         queries.add( "db.unittest_collection.insertOne({\"name\":\"Charlie\",\"active\":true})" );
         queries.add( "db.unittest_collection.countDocuments({})" );
 
-        Object out = myexecutor.executeBatchMongo( "mongotest", queries );
+        Object result = myexecutor.executeBatchMongo( "mongotest", queries );
 
-        assertTrue( out instanceof List, "Expected a List of results" );
-        @SuppressWarnings("unchecked") List<List<String>> results = (List<List<String>>) out;
+        assertTrue( result instanceof List, "Expected a List of results" );
+        @SuppressWarnings("unchecked") List<List<String>> results = (List<List<String>>) result;
 
         assertEquals( 2, results.size(), "Expected two results" );
         assertTrue( results.get( 0 ) instanceof List, "First result should be a List<String>" );
         assertTrue( results.get( 1 ) instanceof List, "Second result should be a List<String>" );
 
-        // Insert → singleton list with ack/JSON
-        assertEquals( 1, results.get( 0 ).size(), "Insert should yield a singleton list" );
-
         // Count → singleton list with a number string
+        assertEquals( 1, results.get( 0 ).size(), "Insert should yield a singleton list" );
         assertEquals( 1, results.get( 1 ).size(), "Count should yield a singleton list" );
+
+        // Content → Check results
         assertTrue( results.get( 1 ).get( 0 ).contains( "1" ), "Count result should include '1'" );
+    }
+
+
+    @Test
+    void testSyntaxErrorThrows() {
+        // Missing closing brace makes this invalid JSON
+        String badQuery = "db.unittest_collection.insertOne({\"foo\":123)"; // typo
+
+        RuntimeException runtimeException = assertThrows( RuntimeException.class, () -> {
+            myexecutor.execute( "mongo", "unittest_namespace", badQuery );
+        } );
+        assertTrue( runtimeException.getMessage().contains( "Syntax error" ) ||
+                runtimeException.getMessage().contains( "execution failed" ),
+                "Exception message should indicate syntax error" );
+
+        assertThrows( Exception.class, () -> {
+            myexecutor.execute( "mongo", "mongotest", badQuery );
+        } );
+    }
+
+
+    @Test
+    void testMultiStatementMongoFails() {
+        String illegal_multiquery = ""
+                + "db.people.insertOne({\"name\":\"Alice\",\"age\":20}); "
+                + "db.people.insertOne({\"name\":\"Bob\",\"age\":24}); "
+                + "db.people.find({})";
+
+        assertThrows( Exception.class, () -> {
+            myexecutor.execute( "mongo", "mongotest", illegal_multiquery );
+        }, "Polypheny should not support multi-statement MongoQL with ';'" );
     }
 
 }

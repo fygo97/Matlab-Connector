@@ -18,7 +18,6 @@ public class QueryExecutor {
      * 
      * @param polyconnection: PolyphenyConnection object that holds the connection
      * details to the Database. It's used to execute queries
-     * @return: Object of the query (SQL: empty, scalar or table; MongoQL: TODO; Cypher: TODO)
      **/
     public QueryExecutor( PolyphenyConnection polyconnection ) {
         this.polyconnection = polyconnection;
@@ -29,20 +28,7 @@ public class QueryExecutor {
      * @Description
      * - Executes the query depending on the language given by the user
      * 
-     * @param language: The database language that is used (e.g. SQL, MongoQL,Cypher)
-     * @param namespace: The namespace in the query string. For SQL this argument as no effect as we use JDBC's
-     * executeQuery(...)/executeUpdate(...). For MQL this argument will be passed to JDBC's execute(...) function. For further
-     * information consult Polpyheny's web documentation.
-     * @param query: The query-text to be executed (e.g. FROM emps SELECT *)
-     * 
-     * @return: ResultToMatlab(rs) which is a Matlab compatible object that is cast to the Matlab user.
-     **/
-
-    /**
-     * @Description
-     * - Executes the query depending on the language given by the user
-     * 
-     * @param language: The database language that is used (e.g. SQL, MongoQL,Cypher)
+     * @param language: The database language that is used (e.g. SQL, Mongo,Cypher)
      * @param namespace: The namespace in the query string. For SQL this argument as no effect as we use JDBC's
      * executeQuery(...)/executeUpdate(...). For MQL this argument will be passed to JDBC's execute(...) function. For further
      * information consult Polpyheny's web documentation.
@@ -56,7 +42,7 @@ public class QueryExecutor {
             Connection conn = polyconnection.getConnection();
             conn.setAutoCommit( true );
         } catch ( SQLException e ) {
-            throw translateSQLException( e );
+            throw translateException( e );
         }
 
         switch ( language.toLowerCase() ) {
@@ -82,7 +68,7 @@ public class QueryExecutor {
                     }
 
                 } catch ( SQLException e ) {
-                    throw translateSQLException( e );
+                    throw translateException( e );
                 } catch ( Exception e ) {
                     throw new RuntimeException( "SQL execution failed: " + e.getMessage(), e );
                 }
@@ -105,10 +91,13 @@ public class QueryExecutor {
                     switch ( result.getResultType() ) {
 
                         case DOCUMENT:
-                            // Always returns a List
+                            // Unwrapping according to → https://docs.polypheny.com/en/latest/drivers/jdbc/extensions/result
                             DocumentResult documentResult = result.unwrap( DocumentResult.class );
                             return DocumentToMatlab( documentResult );
 
+                        // This case was never used in any of the JUnit Tests, as every Mongo Query currently seems to be wrapped as 
+                        // PolyDocument by the JDBC Driver. The case was still left in as security based on the official documentation:
+                        // → https://docs.polypheny.com/en/latest/drivers/jdbc/extensions/result 
                         case SCALAR:
                             ScalarResult scalarResult = result.unwrap( ScalarResult.class );
                             long scalar = scalarResult.getScalar();
@@ -118,7 +107,7 @@ public class QueryExecutor {
                             throw new UnsupportedOperationException( "Unhandled result type: " + result.getResultType() );
                     }
                 } catch ( SQLException e ) {
-                    throw translateSQLException( e );
+                    throw translateException( e );
                 } catch ( Exception e ) {
                     throw new RuntimeException( "Mongo execution failed: " + e.getMessage(), e );
                 }
@@ -138,7 +127,8 @@ public class QueryExecutor {
     /**
      * @Description
      * This function is capable of executing a List of non-SELECT SQL statements in one single Matlab-Java crossing.
-     * All SQL statements except SELECT are supported. For further information consult the Polypheny JDBC Driver documentation.
+     * All SQL statements except SELECT are supported. For further information consult the Polypheny JDBC Driver documentation
+     * → https://docs.polypheny.com/en/latest/drivers/jdbc/relational/statement
      * 
      * @param queries The list of SQL query strings to be executed.
      * @return List<Integer> result A list of integers, where the i-th entry will denote for the i-th query how many rows were touched, e.g.
@@ -167,7 +157,7 @@ public class QueryExecutor {
 
             } catch ( SQLException e ) {
                 polyconnection.rollbackTransaction();
-                throw translateSQLException( e );
+                throw translateException( e );
             } catch ( Exception e ) {
                 polyconnection.rollbackTransaction();
                 throw new RuntimeException(
@@ -182,7 +172,7 @@ public class QueryExecutor {
 
     /**
      * @Description
-     * This function is capable of executing a List of MongoQL statements in one single Matlab-Java crossing.
+     * This function is capable of executing a List of Mongo statements in one single Matlab-Java crossing.
      * Each query is executed individually via the execute(...) method. The result of each query will be a List<String>
      * containing the JSON-encoded documents or scalars (as JSON strings). All individual query results are then grouped
      * into an outer List, which represents the batch result.
@@ -394,7 +384,7 @@ public class QueryExecutor {
      * @param e The exception caught. 08 denotes an error with the Polypheny connection, 42 denotes a
      * @return
      */
-    private RuntimeException translateSQLException( SQLException e ) {
+    private RuntimeException translateException( SQLException e ) {
         String state = e.getSQLState();
         if ( state != null ) {
             if ( state.startsWith( "08" ) ) {
@@ -407,7 +397,9 @@ public class QueryExecutor {
         return new RuntimeException( "Query execution failed: " + e.getMessage(), e );
     }
 
-
+    /*
+     * This function might be used in the future to automatically detect the namespace in MQL queries.
+    
     private static void checkNamespace( String language, String namespace ) {
         if ( namespace == null || namespace.isEmpty() ) {
             if ( language.equalsIgnoreCase( "sql" ) ) {
@@ -419,18 +411,19 @@ public class QueryExecutor {
             }
         }
     }
-
+    */
 
     /**
      * @Description
-     * This function determines the operation (e.g. "find" or "insertOne") of a MongoQL query. This is important to distinguish
+     * This function determines the operation (e.g. "find" or "insertOne") of a Mongo query. This is important to distinguish
      * whether to use executeUpdate or executeQuery. Functionality was moved to a function (instead of handling it like for SQL)
-     * because in MongoQL queries the operation isn't as easy to determine.
+     * because in Mongo queries the operation isn't as easy to determine.
      * MQL queries are always of the form <db>.<namespace>.<operation>()
      * 
      * @param q The query text of type String
      * @return
-     */
+     **/
+    /*
     private static String extractMongoOperation( String q ) {
         String query = q.trim();
         int paren = query.indexOf( '(' );                    // get the position of the first "(" in the query. 
@@ -444,5 +437,6 @@ public class QueryExecutor {
         String operation = query.substring( lastDot + 1, paren ).trim();
         return operation;                                       // return the <operation>
     }
+    */
 
 }

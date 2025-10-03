@@ -246,7 +246,7 @@ public class QueryExecutorTestSQL {
         // Do the batch execution using executeBatch(...)
         List<Integer> counts = myexecutor.executeBatchSql( queries );
 
-        // Test that the lenghth of the counts vector is 13 (for 13 queries in the queries liest).
+        // Test that the length of the counts vector is 13 (for 13 queries in the queries list).
         assertEquals( 13, counts.size(), "Batch should return 13 results" );
 
         // Test the i-th entry in the counts vector is actually 1 (because the i-th query changed exactly 1 row)
@@ -298,11 +298,11 @@ public class QueryExecutorTestSQL {
 
     @Test
     void testSyntaxError() {
-        RuntimeException ex = assertThrows( RuntimeException.class, () -> {
+        RuntimeException runtimeException = assertThrows( RuntimeException.class, () -> {
             myexecutor.execute( "sql", "unittest_namespace", "SELEC WRONG FROM nowhere" );  // typo: SELEC
         } );
-        assertTrue( ex.getMessage().contains( "Syntax error" ) ||
-                ex.getMessage().contains( "execution failed" ),
+        assertTrue( runtimeException.getMessage().contains( "Syntax error" ) ||
+                runtimeException.getMessage().contains( "execution failed" ),
                 "Exception message should indicate syntax error" );
     }
 

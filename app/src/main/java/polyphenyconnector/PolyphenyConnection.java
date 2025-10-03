@@ -43,7 +43,6 @@ public class PolyphenyConnection {
         if ( connection == null ) {
             try {
                 connection = DriverManager.getConnection( url, username, password );
-                connection.setAutoCommit( true );  // make sure standard mode defaults to AutoCommit                       
             } catch ( SQLException e ) {
                 throw new RuntimeException( "Failed to open connection", e );
             }
@@ -82,7 +81,7 @@ public class PolyphenyConnection {
                 connection.close();
             }
         } catch ( SQLException e ) {
-            System.err.println( "Failed to close connection: " + e.getMessage() );
+            throw new RuntimeException( "Failed to close connection: " + e.getMessage() );
         } finally {
             connection = null;
         }
@@ -138,6 +137,11 @@ public class PolyphenyConnection {
     public void rollbackTransaction() throws SQLException {
         connection.rollback();
         connection.setAutoCommit( true );
+    }
+
+
+    public void setAutoCommit( boolean AutoCommitMode ) throws SQLException {
+        connection.setAutoCommit( AutoCommitMode );
     }
 
 }

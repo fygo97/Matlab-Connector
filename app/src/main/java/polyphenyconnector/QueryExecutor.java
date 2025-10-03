@@ -38,12 +38,6 @@ public class QueryExecutor {
      **/
     public Object execute( String language, String namespace, String query ) {
         polyconnection.openIfNeeded();
-        try {
-            Connection conn = polyconnection.getConnection();
-            conn.setAutoCommit( true );
-        } catch ( SQLException e ) {
-            throw translateException( e );
-        }
 
         switch ( language.toLowerCase() ) {
             default:
@@ -118,12 +112,6 @@ public class QueryExecutor {
     }
 
 
-    // SQL convenience overload
-    public Object execute( String query ) {
-        return execute( "sql", "public", query );
-    }
-
-
     /**
      * @Description
      * This function is capable of executing a List of non-SELECT SQL statements in one single Matlab-Java crossing.
@@ -158,7 +146,7 @@ public class QueryExecutor {
                 try {
                     polyconnection.rollbackTransaction();
                 } catch ( Exception rollbackException ) {
-                    // Propagate both the SQL batch failure AND the rollback failure → User must be made aware
+                    // Propagate both the batch failure AND the rollback failure → User must be made
                     throw new RuntimeException( "SQL batch failed AND rollback failed: " + rollbackException.getMessage(), e );
                 }
                 throw translateException( e );
@@ -166,7 +154,7 @@ public class QueryExecutor {
                 try {
                     polyconnection.rollbackTransaction();
                 } catch ( Exception rollbackEx ) {
-                    // Propagate both the SQL batch failure AND the rollback failure → User must be made aware
+                    // Propagate both the batch failure AND the rollback failure → User must be made
                     throw new RuntimeException( "SQL batch failed AND rollback failed: " + rollbackEx.getMessage(), e );
                 }
                 throw new RuntimeException( "SQL batch execution failed. Transaction was rolled back: " + e.getMessage(), e );
@@ -193,11 +181,25 @@ public class QueryExecutor {
     public List<List<String>> executeBatchMongo( String namespace, List<String> queries ) {
         polyconnection.openIfNeeded();
         List<List<String>> results = new ArrayList<>();
-        for ( String query : queries ) {
-            @SuppressWarnings("unchecked") List<String> res = (List<String>) execute( "mongo", namespace, query );
-            results.add( res );
+        try {
+            polyconnection.beginTransaction();
+
+            for ( String query : queries ) {
+                @SuppressWarnings("unchecked") List<String> result = (List<String>) execute( "mongo", namespace, query );
+                results.add( result );
+            }
+
+            polyconnection.commitTransaction();  // commit if all succeeded
+            return results;
+
+        } catch ( Exception e ) {
+            try {
+                polyconnection.rollbackTransaction();  // rollback if anything failed
+            } catch ( Exception rollbackEx ) {
+                throw new RuntimeException( "Rollback failed after batch error", rollbackEx );
+            }
+            throw new RuntimeException( "Batch execution failed", e );
         }
-        return results;
     }
 
 

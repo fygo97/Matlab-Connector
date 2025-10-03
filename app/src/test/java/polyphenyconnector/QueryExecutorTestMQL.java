@@ -1,8 +1,12 @@
 package polyphenyconnector;
 
 import org.junit.jupiter.api.*;
+import org.polypheny.jdbc.PolyConnection;
+import org.polypheny.jdbc.multimodel.*;
+
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -246,7 +250,7 @@ public class QueryExecutorTestMQL {
         String badQuery = "db.unittest_collection.insertOne({\"foo\":123)"; // typo
 
         RuntimeException runtimeException = assertThrows( RuntimeException.class, () -> {
-            myexecutor.execute( "mongo", "unittest_namespace", badQuery );
+            myexecutor.execute( "mongo", "mongotest", badQuery );
         } );
         assertTrue( runtimeException.getMessage().contains( "Syntax error" ) ||
                 runtimeException.getMessage().contains( "execution failed" ),
@@ -268,6 +272,68 @@ public class QueryExecutorTestMQL {
         assertThrows( Exception.class, () -> {
             myexecutor.execute( "mongo", "mongotest", illegal_multiquery );
         }, "Polypheny should not support multi-statement MongoQL with ';'" );
+    }
+
+
+    @Test
+    void testMongoRollbackSupport() throws Exception {
+        // Sanity check to verify rollback on Polypheny server side
+        myconnection.openIfNeeded();
+        Connection conn = myconnection.getConnection();
+
+        try {
+            conn.setAutoCommit( false );
+            PolyConnection polyConn = conn.unwrap( PolyConnection.class );
+            PolyStatement stmt = polyConn.createPolyStatement();
+
+            // Insert Alice with id=1
+            stmt.execute( "mongotest", "mongo", "db.mongotest.insertOne({\"id\": 1, \"name\": \"Alice\"})" );
+
+            // Verify Alice is visible before rollback
+            Result preRes = stmt.execute( "mongotest", "mongo", "db.mongotest.find({\"id\": 1})" );
+            DocumentResult preDocs = preRes.unwrap( DocumentResult.class );
+            assertTrue( preDocs.iterator().hasNext(), "Inserted document should be visible before rollback" );
+
+            // Roll back instead of commit
+            conn.rollback();
+
+        } finally {
+            conn.setAutoCommit( true );
+        }
+
+        // After rollback, Alice should not exist
+        PolyConnection polyConn = conn.unwrap( PolyConnection.class );
+        PolyStatement ps = polyConn.createPolyStatement();
+        Result res = ps.execute( "mongotest", "mongo", "db.mongotest.find({\"id\": 1})" );
+
+        DocumentResult docs = res.unwrap( DocumentResult.class );
+        boolean hasDoc = docs.iterator().hasNext();
+
+        assertFalse( hasDoc,
+                "Rollback did not remove Mongo document with id=1" );
+    }
+
+
+    @Test
+    void testExecuteBatchMongoRollback() {
+        myconnection.openIfNeeded();
+
+        // Prepare batch: 2 valid inserts + 1 faulty insert
+        List<String> queries = new ArrayList<>();
+        queries.add( "db.unittest_collection.insertOne({\"id\": 1, \"name\": \"Alice\"})" );
+        queries.add( "db.unittest_collection.insertOne({\"id\": 2, \"name\": \"Bob\"})" );
+        queries.add( "db.unittest_collection.insertOne({\"id\": 3, \"name\": \"Janice\"" ); // → missing closing }) brace 
+
+        // Expect the batch to throw (rollback triggered)
+        assertThrows( RuntimeException.class, () -> {
+            myexecutor.executeBatchMongo( "mongotest", queries );
+        } );
+
+        // After rollback, none of the documents should exist
+        @SuppressWarnings("unchecked") List<String> docs = (List<String>) myexecutor.execute(
+                "mongo", "mongotest", "db.unittest_collection.find({\"id\": {\"$gte\": 0, \"$lte\": 100}})" );
+
+        assertEquals( 0, docs.size(), "Rollback should have undone all inserts when one failed" );
     }
 
 }

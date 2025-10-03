@@ -154,16 +154,24 @@ public class QueryExecutor {
                     result.add( r );
                 }
                 return result;
-
             } catch ( SQLException e ) {
-                polyconnection.rollbackTransaction();
+                try {
+                    polyconnection.rollbackTransaction();
+                } catch ( Exception rollbackException ) {
+                    // Propagate both the SQL batch failure AND the rollback failure → User must be made aware
+                    throw new RuntimeException( "SQL batch failed AND rollback failed: " + rollbackException.getMessage(), e );
+                }
                 throw translateException( e );
             } catch ( Exception e ) {
-                polyconnection.rollbackTransaction();
-                throw new RuntimeException(
-                        "SQL batch execution failed. Transaction was rolled back: " + e.getMessage(), e
-                );
+                try {
+                    polyconnection.rollbackTransaction();
+                } catch ( Exception rollbackEx ) {
+                    // Propagate both the SQL batch failure AND the rollback failure → User must be made aware
+                    throw new RuntimeException( "SQL batch failed AND rollback failed: " + rollbackEx.getMessage(), e );
+                }
+                throw new RuntimeException( "SQL batch execution failed. Transaction was rolled back: " + e.getMessage(), e );
             }
+
         } catch ( SQLException e ) {
             throw new RuntimeException( "Failed to manage transaction", e );
         }
@@ -211,7 +219,7 @@ public class QueryExecutor {
         // Case 1: Empty Result
         // ─────────────────────────────
         if ( !rs.next() ) {
-            System.out.println( "Empty result set." );
+            //System.out.println( "Empty result set." );
             return null;
         }
 
@@ -219,7 +227,7 @@ public class QueryExecutor {
         // Case 2: Scalar Result
         // ─────────────────────────────
         if ( colCount == 1 && rs.isLast() ) {
-            System.out.println( "Scalar result set." );
+            //System.out.println( "Scalar result set." );
             Object scalar = rs.getObject( 1 );
             return scalar;
         }
@@ -290,8 +298,8 @@ public class QueryExecutor {
                 if ( i < elems.length - 1 )
                     sb.append( "," );
             }
-        } catch ( SQLException ex ) {
-            throw new RuntimeException( "List serialization error: " + ex.getMessage(), ex );
+        } catch ( SQLException e ) {
+            throw new RuntimeException( "List serialization error: " + e.getMessage(), e );
         }
         sb.append( "]" );
         return sb.toString();

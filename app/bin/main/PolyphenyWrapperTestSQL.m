@@ -5,6 +5,7 @@ classdef PolyphenyWrapperTestSQL < matlab.unittest.TestCase
 
     methods(TestClassSetup)
         function setUpNamespaceAndTable(testCase)
+            clc;
             % Open connection once for all tests
             testCase.conn = polypheny.Polypheny("localhost",20590,"pa","");
 

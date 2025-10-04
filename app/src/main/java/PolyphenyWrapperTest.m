@@ -5,7 +5,6 @@ classdef PolyphenyWrapperTest < matlab.unittest.TestCase
     
     methods (TestMethodSetup)
         function setupConnection(testCase)
-            startup;
             testCase.conn = polypheny.Polypheny('localhost', int32(20590), 'pa', '' );
         end
     end
@@ -58,7 +57,7 @@ classdef PolyphenyWrapperTest < matlab.unittest.TestCase
             result = testCase.conn.queryBatch("sql" , "" , queries);
 
             % Verify JDBC return codes
-            testCase.verifyEqual(result, [1 1]);
+            testCase.verifyEqual(result.RowsAffected', [1 1]);
 
             % Verify table contents
             T = testCase.conn.query("sql" , "" ,"SELECT id, name FROM batch_test ORDER BY id");

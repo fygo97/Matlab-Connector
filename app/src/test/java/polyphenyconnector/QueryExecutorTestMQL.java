@@ -58,7 +58,29 @@ public class QueryExecutorTestMQL {
     }
 
 
-    @SuppressWarnings("unchecked")
+    @Test
+    void testDeleteManyRemovesAllDocs() {
+        // Arrange: create namespace & collection
+        myconnection.openIfNeeded();
+        myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.drop()" );
+        myexecutor.execute( "mongo", "mongotest", "db.createCollection(\"unittest_collection\")" );
+
+        // Insert 3 docs
+        myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.insertOne({\"id\":1,\"name\":\"Alice\"})" );
+        myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.insertOne({\"id\":2,\"name\":\"Bob\"})" );
+        myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.insertOne({\"id\":3,\"name\":\"Ciri\"})" );
+
+        // Act: delete all
+        Object ack = myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.deleteMany({})" );
+
+        // Assert: ack JSON contains deletedCount:3
+        assertTrue( ack.toString().contains( "\"updateCount\":3" ), "Expected 3 deletions, got: " + ack );
+        // Verify collection is empty
+        @SuppressWarnings("unchecked") List<String> docs = (List<String>) myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.find({})" );
+        assertEquals( 0, docs.size(), "Collection should be empty after deleteMany({})" );
+    }
+
+
     @Test
     void testInsertandDrop() {
         Object result = myexecutor.execute( "mongo", "mongotest", "db.unittest_collection.find({})" );

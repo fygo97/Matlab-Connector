@@ -244,10 +244,10 @@ public class QueryExecutorTestSQL {
         );
 
         // Do the batch execution using executeBatch(...)
-        List<Integer> counts = myexecutor.executeBatchSql( queries );
+        int[] counts = myexecutor.executeBatchSql( queries );
 
         // Test that the length of the counts vector is 13 (for 13 queries in the queries list).
-        assertEquals( 13, counts.size(), "Batch should return 13 results" );
+        assertEquals( 13, counts.length, "Batch should return 13 results" );
 
         // Test the i-th entry in the counts vector is actually 1 (because the i-th query changed exactly 1 row)
         for ( Object c : counts ) {
@@ -270,7 +270,7 @@ public class QueryExecutorTestSQL {
         // Prepare one correct and one ill posed SQL statement to query as batch later.
         List<String> queries = Arrays.asList(
                 "INSERT INTO unittest_namespace.batch_table VALUES (1, 'Alice')",
-                "Purposefully messed up query message to produce a failure" // duplicate PK
+                "Purposefully messed up query message to produce a failure" // PK violation → id missing
         );
 
         // Run the ill posed batch query and test an exception is thrown.
@@ -311,7 +311,7 @@ public class QueryExecutorTestSQL {
     void testCommitFailureRollback() {
         List<String> queries = Arrays.asList(
                 "INSERT INTO unittest_namespace.batch_table VALUES (1, 'Alice', 'F', DATE '1990-01-15', 1001)",
-                "Intentional nonsense to produce a failure" // PK violation
+                "Intentional nonsense to produce a failure" // PK violation → id missing
         );
 
         assertThrows( RuntimeException.class, () -> {

@@ -76,7 +76,7 @@ public class QueryExecutor {
                     // Unwrap Connection connection to the JDBC Driver-supplied PolyConnection polyConnection
                     PolyConnection polyConnection = connection.unwrap( PolyConnection.class );
 
-                    // Create a PolyStatement object to call .execute(...) method of the JDBC- Driver on
+                    // Create a PolyStatement object to call .execute(...) method of the JDBC-Driver on
                     PolyStatement polyStatement = polyConnection.createPolyStatement();
 
                     // Call the execute(...) function on the polyStatement
@@ -122,7 +122,7 @@ public class QueryExecutor {
      * @return List<Integer> result A list of integers, where the i-th entry will denote for the i-th query how many rows were touched, e.g.
      * n: n rows were updated, 0: no rows were touched.
      */
-    public List<Integer> executeBatchSql( List<String> queries ) {
+    public int[] executeBatchSql( List<String> queries ) {
         polyconnection.openIfNeeded();
         try {
             polyconnection.beginTransaction();
@@ -134,14 +134,9 @@ public class QueryExecutor {
                     }
                     stmt.addBatch( query );
                 }
-                int[] resultArray = stmt.executeBatch();
+                int[] result = stmt.executeBatch();
                 polyconnection.commitTransaction();
-
-                List<Integer> result = new ArrayList<>( resultArray.length );
-                for ( int r : resultArray ) {
-                    result.add( r );
-                }
-                return result;
+                return result;   // return directly
             } catch ( SQLException e ) {
                 try {
                     polyconnection.rollbackTransaction();
@@ -268,7 +263,7 @@ public class QueryExecutor {
         Iterator<PolyDocument> documentIterator = documentResult.iterator();
         while ( documentIterator.hasNext() ) {
             PolyDocument document = documentIterator.next();
-            docs.add( NestedPolyDocumentToString( document ) );
+            docs.add( NestedPolyDocumentToString( document ) ); // at the most outer layer everything must be wrapped as PolyDocument
         }
         return docs;
     }
@@ -290,7 +285,7 @@ public class QueryExecutor {
     }
 
 
-    private String NestedListToString( Array array ) {
+    private String NestedArrayToString( Array array ) {
         StringBuilder sb = new StringBuilder();
         sb.append( "[" );
         try {
@@ -319,7 +314,7 @@ public class QueryExecutor {
                     case DOCUMENT:
                         return NestedPolyDocumentToString( value.asDocument() );
                     case LIST:
-                        return NestedListToString( value.asArray() );
+                        return NestedArrayToString( value.asArray() );
                     case BOOLEAN:
                         return String.valueOf( value.asBoolean() );
                     case INTEGER:
@@ -354,7 +349,7 @@ public class QueryExecutor {
             } else if ( result instanceof PolyDocument ) {
                 return NestedPolyDocumentToString( (PolyDocument) result );
             } else if ( result instanceof Array ) {
-                return NestedListToString( (Array) result );
+                return NestedArrayToString( (Array) result );
             } else if ( result instanceof String ) {
                 return "\"" + escapeJson( (String) result ) + "\"";
             } else if ( result instanceof java.sql.Date

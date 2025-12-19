@@ -10,19 +10,29 @@ build/
 .DS_Store
 Thumbs.db
 
-# Ignore lib folder except .jar files
+# ignore lib folder except .jar files
 libs/*
 
-# Ignore Gradle project-specific cache directory
+# ignore Gradle project-specific cache directory
 .gradle
 
-# Ignore Gradle build output directory
+# ignore Gradle build output directory
 build
+
+
+# ignore resources
+resources/project/
+
+# ignore the presentation and report
+project_presentation
+project_report
 
 # ignore the polypheny-all.jar and app.jar files
 app\build\libs
 
 # ignore the matlab add-on folder structure
-matlab-polypheny-connector
-
-/matlab-polypheny-connector/Toolbox1/
+matlab-polypheny-connector/jar/polypheny-all.jar
+matlab-polypheny-connector/resources
+matlab-polypheny-connector/libs/polypheny-jdbc-driver-2.3.jar
+matlab-polypheny-connector/Toolbox1/PolyphenyConnector.mltbx
+matlab-polypheny-connector/Toolbox1/release/*.mltbx

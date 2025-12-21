@@ -65,7 +65,7 @@ To build the project, ensure the following:
 The connector is distributed as a MATLAB toolbox (`.mltbx`).
 
 ### Steps
-
+0. create a `.jar` file with your latest version of the Polypheny Connector by compiling the project. (**Tip**: The compiled `polypheny-all.jar` will be stored under )
 1. Open MATLAB
 2. Go to **Home**
 3. Open **Add-Ons → Package Toolbox**
@@ -76,19 +76,18 @@ The connector is distributed as a MATLAB toolbox (`.mltbx`).
    - `polypheny-jdbc-driver-2.3.jar` → `libs/`
 7. Delete any existing `PolyphenyConnector.mltbx` in `Toolbox1/release`
 
-### Packaging Settings
-
-Verify the preview:
+8. Before we finally package the Toolbox you must verify the following are true:
 
 - **Output file:** `PolyphenyConnector.mltbx`
 - **Output location:** `Toolbox1/release`
 - **MATLAB path:** `/`
-- **Class path:**
+- **Class path must include:**
     
     jar/polypheny-all.jar
+
     libs/polypheny-jdbc-driver-2.3.jar
 
 
-8. Click **Package Toolbox**
+9. Click **Package Toolbox** (top right corner in MATLAB)
 
 MATLAB will generate the toolbox file in `Toolbox1/release`.

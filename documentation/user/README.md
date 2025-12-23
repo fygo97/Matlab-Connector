@@ -88,9 +88,12 @@ result = conn.query( 'language', 'namespace', queryString );
 where `language` is an element of `{'sql', 'mongo', 'cypher'}`, `'namespace'` is the name of the namespace the query targets in the database and `queryString` is the string passed to the database.
 
 > **Note:**
-> For Mongo queries the namespace argument is necessary for the creation and deletion of data structures in the backend. For SQL queries the namespace argument has no consequence and thus does not need to be set. In the following examples we will therefore use `""` as namespace argument.
+> For Mongo queries the namespace argument is necessary for the creation and deletion of data structures in the backend. For SQL queries the namespace argument has no consequence and thus does not need to be set. In the following examples we will therefore use `""` as namespace argument for SQL.
 
 ### Executing SQL-queries
+>**Note:** For relational query
+results most primitive types used in our tests were cast to Matlab types. Edge cases were returned as Java objects in the table and will currently still have to be handled by the user. 
+
 Let us look at some practical examples
 ```matlab
 conn.query( "sql", "", "DROP TABLE IF EXISTS test" );
@@ -157,3 +160,201 @@ where for `queries` containing `n` single queries, the result will be a `n x 1` 
          1
 ```
 Should single queries of a batch fail a rollback will be triggered (all or nothing principle).
+### Executing Mongo Queries
+
+The Polypheny MATLAB connector supports Mongo-style queries via Polypheny’s document model. Mongo queries return **raw JSON documents** as MATLAB strings. Automatic decoding is intentionally not performed.
+
+```matlab
+    result = conn.query( 'mongo', namespace, queryString );
+```
+
+- `namespace` – Mongo adapter / namespace (**required**)  
+- `queryString` – Mongo-style query (**single statement only**)
+
+**Note:**: Unlike SQL, the `namespace` argument is required for Mongo queries.
+
+---
+
+#### Return Type Semantics
+
+| Operation type            | MATLAB return value      |
+|--------------------------|--------------------------|
+| `find(...)`                | string array (JSON docs) |
+| `insertOne(...)`           | acknowledgment JSON      |
+| `deleteMany(...)`          | acknowledgment JSON      |
+| `countDocuments(...)`      | acknowledgment JSON              |
+| empty result             | `"[]"` (JSON string)                     |
+| syntax / multi-statement | error                    |
+
+
+#### Creating a Collection
+```matlab
+conn.query( "mongo", "demo", 'db.patients.drop()' );
+conn.query( "mongo", "demo", 'db.createCollection("patients")' );
+```
+
+#### Inserting and Querying Documents
+Documents can be inserted with
+```matlab
+conn.query( "mongo", "demo", 'db.patients.insertOne({"name":"Alice","age":34,"icu":true})' );
+```
+and queried using
+```matlab
+docs = conn.query( "mongo", "demo", 'db.patients.find({})' );
+disp(docs)
+```
+will generate the output:
+```text
+"{""name"":""Alice"",""age"":34,""icu"":true}"
+```
+and can be decoded using `jsondecode( docs ) ` which will return
+```text
+  struct with fields:
+
+    name: "Alice"
+     age: 34
+     icu: true
+```
+#### Decoding JSON in MATLAB using `jsondecode`
+Since document queries can return a variety of results included nested documents, we will present some examples to illustrate the usage and possibilities of MATLAB's struct type.
+
+##### Example 1: Common Document Structure 
+
+This example demonstrates working with **homogeneous Mongo documents** that all share the same schema.
+After decoding, `jsondecode` returns a **struct array**, enabling vectorized access and logical indexing.
+
+```matlab
+conn.query("mongo","demo", 'db.patients_mongo.drop()');
+conn.query("mongo","demo", 'db.createCollection("patients_mongo")');
+
+conn.query("mongo","demo", ...
+  'db.patients_mongo.insertOne({"name":"Alice Keller","age":34,"sex":"F", ...
+  "hospital":{"name":"Universitätsspital Basel","address":{"city":"Basel","zip":4051}}, ...
+  "infection_date":"2025-03-15","variant":"Omicron","vaccinated":true, ...
+  "icu":true,"recovered":true,"death":false})');
+
+docs_all = conn.query("mongo","demo",'db.patients_mongo.find({})');
+decoded_all = jsondecode(docs_all);
+  ```
+will return
+```text
+1×1 struct array with fields:
+
+  recovered
+  death
+  sex
+  infection_date
+  name
+  variant
+  icu
+  x_id
+  vaccinated
+  hospital
+  age
+```
+The contents of the structure can be used through 
+```text
+decoded_all.name
+
+ans = 
+  1×1 string array
+    "Alice Keller"
+```
+and nested documents can equivalently accessed by
+```text
+decoded_all(1).hospital.name
+
+ans =
+    "Universitätsspital Basel"
+```
+
+#### Example 2: Nested Documents and Arrays
+Insertions can consist of nested documents, e.g. the following code
+```matlab
+conn.query( "mongo", "demo",'db.patients.insertOne({"name":"Bob","meta":{"insurance":"LiveForeverInsurance","allergies":["nuts","penicillin"]}})' );
+
+docs = conn.query( "mongo", "demo", 'db.patients.find({})' );
+decoded = jsondecode(docs);
+
+decoded(1).meta.insurance
+decoded(1).meta.allergies
+```
+will create the outputs:
+```text
+decoded =
+
+  struct with fields:
+
+    name: "Bob"
+    meta: [1×1 struct]
+
+ans =
+    "LiveForeverInsurance"
+
+ans =
+  2×1 cell array
+    {'nuts'}
+    {'penicillin'}
+```
+
+#### Counting Documents
+Counting documents using Mongo
+```matlab
+count_json = conn.query( "mongo", "demo", 'db.patients.countDocuments({})' );
+disp(count_json)
+```
+will generate:
+
+    {"count":1}
+---
+
+#### Empty Results
+```matlab
+docs = conn.query( "mongo", "demo", 'db.patients.find({})' );
+```
+Returned value:
+
+    "[]"
+
+---
+
+#### Batch Execution (Mongo)
+
+    queries = {
+        'db.patients.insertOne({"name":"Alice","age":25})'
+        'db.patients.insertOne({"name":"Bob","age":30})'
+    };
+
+    conn.queryBatch( "mongo", "demo", queries );
+
+Batch queries returning results:
+
+    docs = conn.queryBatch( "mongo", "demo", {
+        'db.patients.find({"name":"Alice"})'
+        'db.patients.find({"name":"Bob"})'
+    });
+
+    decoded = jsondecode( docs );
+
+---
+
+### Error Handling
+
+The following conditions raise MATLAB errors:
+- invalid JSON syntax
+- multiple statements in a single query string
+- unsupported operations
+
+    badQuery = 'db.patients.insertOne({"foo":123)';
+    conn.query( "mongo", "demo", badQuery );
+
+---
+
+### Design Rationale
+
+- Mongo results are returned as raw JSON
+- Automatic decoding is avoided
+- Users explicitly control conversion via jsondecode
+
+### Executing Cypher Queries
+The Connector currently does not support Cypher queries yet.

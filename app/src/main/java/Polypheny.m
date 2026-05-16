@@ -42,34 +42,46 @@ classdef Polypheny < handle
 
 
             try
-                java_result = PolyWrapper.queryExecutor.execute( string( language ), string( namespace ), queryStr );
+                
 
                 switch lower( language )
                     case "sql"
+                        % Java returns: Object[] { String[] colNames, String[] typeNames, Object[] columns }
+                        java_result = PolyWrapper.queryExecutor.executeSql( queryStr );
+                        
                         if isempty( java_result )
-                            matlab_result = [];
-                        elseif isscalar( java_result )
-                            matlab_result = java_result;
-                        elseif isa( java_result,'java.lang.Object[]' ) && numel( java_result )==2
-                            tmp = cell( java_result );
-                            colNames = cell( tmp{1} );
-                            data     = cell( tmp{2} );
-                            matlab_result = cell2table( data, 'VariableNames', colNames );
+                            matlab_result = table();
+                            return;
+                        end
+
+                        % Unpack the "Heist" package
+                        rawColNames = cell( java_result(1) ); % Raw column names directly from Java
+                        colData  = cell( java_result(3) ); % This is an Object array of primitive arrays
+
+                        if isempty( colData )
+                            matlab_result = table();
                         else
-                            matlab_result = [];
+                            % 1. Replace illegal characters and handle
+                            % starting numbers using the makeValidName
+                            % function
+                            % e.g. ["id$", "id_"] -> ["id_", "id_"] 
+                            cleanColNames = matlab.lang.makeValidName(rawColNames);
+                            
+                            % 2. De-duplicate name collisions e.g. ["id_", "id_"] -> ["id_1", "id_2"] 
+                            cleanColNames = matlab.lang.makeUniqueStrings(cleanColNames, {}, namelengthmax);
+                            
+                            % Force cleanColNames to be a column cell array matching colData(:)
+                            cleanColNames = cleanColNames(:); 
+                            colDataVector = colData(:);
+
+                            % Direct Table Construction via structures (The speed demon approach)
+                            s = cell2struct( colDataVector, cleanColNames, 1 );
+                            matlab_result = struct2table( s );
                         end
 
                     case "mongo"
-                        if isa( java_result, 'java.util.List' )
-                            % Current driver behavior: always returns List<String> of JSON docs
-                            matlab_result = string(java_result);
-                        elseif isnumeric( java_result )
-                            % Not observed in current driver, but kept for forward compatibility
-                            % (e.g. if Polypheny ever returns scalar counts directly)
-                            matlab_result = java_result;
-                        else
-                            error( "Unexpected Mongo result type: %s", class( java_result ) );
-                        end
+                            java_result = PolyWrapper.queryExecutor.executeMongo( "mongo", namespace, queryStr );
+                            matlab_result = string( java_result );
 
                     case "cypher"
                         % TODO: integrate once Cypher executor is ready

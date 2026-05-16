@@ -12,7 +12,7 @@ public class Main {
 
             PolyphenyConnection conn = new PolyphenyConnection( host, port, user, pass );
             QueryExecutor executor = new QueryExecutor( conn );
-            executor.execute( "sql", "emps", "SELECT * FROM emps;" );
+            executor.executeSql( "SELECT * FROM emps;" );
             conn.close();
         } catch ( Exception e ) {
             e.printStackTrace();
